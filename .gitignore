@@ -46,3 +46,17 @@ docs/instructions/Roadmap.md
 .cursorrules
 *.md
 .qodo
+
+# But include docs directory markdown files
+!docs/
+!docs/features/
+!docs/*.md
+# But include docs directory markdown files
+!docs/
+!docs/features/
+!docs/*.md
+
+# But include docs directory markdown files
+!docs/
+!docs/features/
+!docs/*.md
