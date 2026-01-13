@@ -648,147 +648,146 @@ ${finalMessageContent}`;
             await sendBackendMessage(
               currentChat.id,
               finalMessageContent,
-              model,
-              provider: provider.name,
-              timestamp: new Date().toISOString(),
-            });
-logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
-  } catch (error) {
-  logStore.logError('Failed to save user message to backend', error);
-  console.error('Failed to save user message:', error);
-}
-}
+              'user',
+              { model, provider: provider.name, timestamp: new Date().toISOString() }
+            );
+            logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
+          } catch (error) {
+            logStore.logError('Failed to save user message to backend', error);
+            console.error('Failed to save user message:', error);
+          }
+        }
       }
 
-setInput('');
-Cookies.remove(PROMPT_COOKIE_KEY);
+      setInput('');
+      Cookies.remove(PROMPT_COOKIE_KEY);
 
-setUploadedFiles([]);
-setImageDataList([]);
+      setUploadedFiles([]);
+      setImageDataList([]);
 
-resetEnhancer();
+      resetEnhancer();
 
-textareaRef.current?.blur();
+      textareaRef.current?.blur();
     };
 
-/**
- * Handles the change event for the textarea and updates the input state.
- * @param event - The change event from the textarea.
- */
-const onTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-  handleInputChange(event);
-};
+    /**
+     * Handles the change event for the textarea and updates the input state.
+     * @param event - The change event from the textarea.
+     */
+    const onTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      handleInputChange(event);
+    };
 
-/**
- * Debounced function to cache the prompt in cookies.
- * Caches the trimmed value of the textarea input after a delay to optimize performance.
- */
-const debouncedCachePrompt = useCallback(
-  debounce((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const trimmedValue = event.target.value.trim();
-    Cookies.set(PROMPT_COOKIE_KEY, trimmedValue, { expires: 30 });
-  }, 1000),
-  [],
-);
+    /**
+     * Debounced function to cache the prompt in cookies.
+     * Caches the trimmed value of the textarea input after a delay to optimize performance.
+     */
+    const debouncedCachePrompt = useCallback(
+      debounce((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const trimmedValue = event.target.value.trim();
+        Cookies.set(PROMPT_COOKIE_KEY, trimmedValue, { expires: 30 });
+      }, 1000),
+      [],
+    );
 
-useEffect(() => {
-  const storedApiKeys = Cookies.get('apiKeys');
+    useEffect(() => {
+      const storedApiKeys = Cookies.get('apiKeys');
 
-  if (storedApiKeys) {
-    setApiKeys(JSON.parse(storedApiKeys));
-  }
-}, []);
-
-const handleModelChange = (newModel: string) => {
-  setModel(newModel);
-  Cookies.set('selectedModel', newModel, { expires: 30 });
-};
-
-const handleProviderChange = (newProvider: ProviderInfo) => {
-  setProvider(newProvider);
-  Cookies.set('selectedProvider', newProvider.name, { expires: 30 });
-};
-
-return (
-  <BaseChat
-    ref={animationScope}
-    textareaRef={textareaRef}
-    input={input}
-    showChat={showChat}
-    chatStarted={chatStarted}
-    isStreaming={isLoading || fakeLoading}
-    onStreamingChange={(streaming) => {
-      streamingState.set(streaming);
-    }}
-    enhancingPrompt={enhancingPrompt}
-    promptEnhanced={promptEnhanced}
-    sendMessage={sendMessage}
-    model={model}
-    setModel={handleModelChange}
-    provider={provider}
-    setProvider={handleProviderChange}
-    providerList={activeProviders}
-    handleInputChange={(e) => {
-      onTextareaChange(e);
-      debouncedCachePrompt(e);
-    }}
-    handleStop={abort}
-    description={description}
-    importChat={importChat}
-    exportChat={exportChat}
-    messages={messages.map((message, i) => {
-      if (message.role === 'user') {
-        return message;
+      if (storedApiKeys) {
+        setApiKeys(JSON.parse(storedApiKeys));
       }
+    }, []);
 
-      // Use the original message content if parsedMessages is not available at this index
-      const parsedContent = parsedMessages && parsedMessages[i] !== undefined ? parsedMessages[i] : message.content;
+    const handleModelChange = (newModel: string) => {
+      setModel(newModel);
+      Cookies.set('selectedModel', newModel, { expires: 30 });
+    };
 
-      return {
-        ...message,
-        content: parsedContent,
-      };
-    })}
-    enhancePrompt={() => {
-      enhancePrompt(
-        input,
-        (input) => {
-          setInput(input);
-          scrollTextArea();
-        },
-        model,
-        provider,
-        apiKeys,
-      );
-    }}
-    uploadedFiles={uploadedFiles}
-    setUploadedFiles={setUploadedFiles}
-    imageDataList={imageDataList}
-    setImageDataList={setImageDataList}
-    actionAlert={actionAlert}
-    clearAlert={() => workbenchStore.clearAlert()}
-    supabaseAlert={supabaseAlert}
-    clearSupabaseAlert={() => workbenchStore.clearSupabaseAlert()}
-    deployAlert={deployAlert}
-    clearDeployAlert={() => workbenchStore.clearDeployAlert()}
-    llmErrorAlert={llmErrorAlert}
-    clearLlmErrorAlert={clearApiErrorAlert}
-    data={chatData}
-    chatMode={chatMode}
-    setChatMode={setChatMode}
-    append={append}
-    designScheme={designScheme}
-    setDesignScheme={setDesignScheme}
-    selectedElement={selectedElement}
-    setSelectedElement={setSelectedElement}
-    addToolResult={addToolResult}
-    inRightPanel={inRightPanel}
-    onContextFilesSelected={setContextFiles}
-    chatContextMode={chatContextMode}
-    setChatContextMode={setChatContextMode}
-    selectedContextFiles={selectedContextFiles}
-    setSelectedContextFiles={setSelectedContextFiles}
-  />
-);
+    const handleProviderChange = (newProvider: ProviderInfo) => {
+      setProvider(newProvider);
+      Cookies.set('selectedProvider', newProvider.name, { expires: 30 });
+    };
+
+    return (
+      <BaseChat
+        ref={animationScope}
+        textareaRef={textareaRef}
+        input={input}
+        showChat={showChat}
+        chatStarted={chatStarted}
+        isStreaming={isLoading || fakeLoading}
+        onStreamingChange={(streaming) => {
+          streamingState.set(streaming);
+        }}
+        enhancingPrompt={enhancingPrompt}
+        promptEnhanced={promptEnhanced}
+        sendMessage={sendMessage}
+        model={model}
+        setModel={handleModelChange}
+        provider={provider}
+        setProvider={handleProviderChange}
+        providerList={activeProviders}
+        handleInputChange={(e) => {
+          onTextareaChange(e);
+          debouncedCachePrompt(e);
+        }}
+        handleStop={abort}
+        description={description}
+        importChat={importChat}
+        exportChat={exportChat}
+        messages={messages.map((message, i) => {
+          if (message.role === 'user') {
+            return message;
+          }
+
+          // Use the original message content if parsedMessages is not available at this index
+          const parsedContent = parsedMessages && parsedMessages[i] !== undefined ? parsedMessages[i] : message.content;
+
+          return {
+            ...message,
+            content: parsedContent,
+          };
+        })}
+        enhancePrompt={() => {
+          enhancePrompt(
+            input,
+            (input) => {
+              setInput(input);
+              scrollTextArea();
+            },
+            model,
+            provider,
+            apiKeys,
+          );
+        }}
+        uploadedFiles={uploadedFiles}
+        setUploadedFiles={setUploadedFiles}
+        imageDataList={imageDataList}
+        setImageDataList={setImageDataList}
+        actionAlert={actionAlert}
+        clearAlert={() => workbenchStore.clearAlert()}
+        supabaseAlert={supabaseAlert}
+        clearSupabaseAlert={() => workbenchStore.clearSupabaseAlert()}
+        deployAlert={deployAlert}
+        clearDeployAlert={() => workbenchStore.clearDeployAlert()}
+        llmErrorAlert={llmErrorAlert}
+        clearLlmErrorAlert={clearApiErrorAlert}
+        data={chatData}
+        chatMode={chatMode}
+        setChatMode={setChatMode}
+        append={append}
+        designScheme={designScheme}
+        setDesignScheme={setDesignScheme}
+        selectedElement={selectedElement}
+        setSelectedElement={setSelectedElement}
+        addToolResult={addToolResult}
+        inRightPanel={inRightPanel}
+        onContextFilesSelected={setContextFiles}
+        chatContextMode={chatContextMode}
+        setChatContextMode={setChatContextMode}
+        selectedContextFiles={selectedContextFiles}
+        setSelectedContextFiles={setSelectedContextFiles}
+      />
+    );
   },
 );
