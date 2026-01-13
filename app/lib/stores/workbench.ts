@@ -1248,6 +1248,9 @@ export class WorkbenchStore {
           // If the path already starts with WORK_DIR, use it as is
           if (filePath.startsWith(WORK_DIR)) {
             normalizedFilePath = filePath;
+          } else if (filePath.startsWith('/home/project/')) {
+            // Handle legacy paths that might have the full /home/project prefix
+            normalizedFilePath = filePath;
           } else {
             /*
              * If the path doesn't start with WORK_DIR, it's likely a relative path
