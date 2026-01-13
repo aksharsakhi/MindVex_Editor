@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { ClientOnly } from 'remix-utils/client-only';
+import { Link } from '@remix-run/react';
 import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
@@ -17,9 +18,9 @@ export function Header() {
     >
       <div className="flex items-center gap-2 z-logo text-mindvex-elements-textPrimary cursor-pointer">
         <div className="i-ph:sidebar-simple-duotone text-xl" />
-        <a href="/" className="text-2xl font-semibold text-accent flex items-center">
+        <Link to="/" className="text-2xl font-semibold text-accent flex items-center">
           <span className="font-bold text-xl text-mindvex-elements-textPrimary">MindVex</span>
-        </a>
+        </Link>
       </div>
       {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.
         <>

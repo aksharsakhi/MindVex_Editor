@@ -130,20 +130,20 @@ export function AuthModal({ onClose }: AuthModalProps) {
 
           {/* Toggle */}
           <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setEmail('');
-                setPassword('');
-                setFullName('');
-              }}
-              className="text-sm text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary transition-colors"
-            >
+            <p className="text-sm text-mindvex-elements-textSecondary">
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <span className="font-medium text-mindvex-elements-button-primary-background">
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setEmail('');
+                  setPassword('');
+                  setFullName('');
+                }}
+                className="font-medium text-mindvex-elements-button-primary-background hover:text-mindvex-elements-button-primary-backgroundHover transition-colors underline-offset-4 hover:underline"
+              >
                 {isLogin ? 'Sign up' : 'Sign in'}
-              </span>
-            </button>
+              </button>
+            </p>
           </div>
         </div>
       </div>
