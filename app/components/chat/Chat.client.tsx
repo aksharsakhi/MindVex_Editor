@@ -570,94 +570,93 @@ ${finalMessageContent}`;
             await sendBackendMessage(
               currentChat.id,
               finalMessageContent,
-              model,
-              provider: provider.name,
-              timestamp: new Date().toISOString(),
-            });
-logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
+              'user',
+              { model, provider: provider.name, timestamp: new Date().toISOString() }
+            );
+            logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
           } catch (error) {
-  logStore.logError('Failed to save user message to backend', error);
-  console.error('Failed to save user message:', error);
-}
+            logStore.logError('Failed to save user message to backend', error);
+            console.error('Failed to save user message:', error);
+          }
         }
 
-setFakeLoading(false);
-setInput('');
-Cookies.remove(PROMPT_COOKIE_KEY);
+        setFakeLoading(false);
+        setInput('');
+        Cookies.remove(PROMPT_COOKIE_KEY);
 
-setUploadedFiles([]);
-setImageDataList([]);
+        setUploadedFiles([]);
+        setImageDataList([]);
 
-resetEnhancer();
+        resetEnhancer();
 
-textareaRef.current?.blur();
+        textareaRef.current?.blur();
 
-return;
+        return;
       }
 
-if (error != null) {
-  setMessages(messages.slice(0, -1));
-}
+      if (error != null) {
+        setMessages(messages.slice(0, -1));
+      }
 
-const modifiedFiles = workbenchStore.getModifiedFiles();
+      const modifiedFiles = workbenchStore.getModifiedFiles();
 
-chatStore.setKey('aborted', false);
+      chatStore.setKey('aborted', false);
 
-if (modifiedFiles !== undefined) {
-  const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
-  const messageText = `[Model: ${model}]
+      if (modifiedFiles !== undefined) {
+        const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
+        const messageText = `[Model: ${model}]
 
 [Provider: ${provider.name}]
 
 ${userUpdateArtifact}${finalMessageContent}`;
 
-  const attachmentOptions =
-    uploadedFiles.length > 0 ? { experimental_attachments: await filesToAttachments(uploadedFiles) } : undefined;
+        const attachmentOptions =
+          uploadedFiles.length > 0 ? { experimental_attachments: await filesToAttachments(uploadedFiles) } : undefined;
 
-  append(
-    {
-      role: 'user',
-      content: messageText,
-      parts: createMessageParts(messageText, imageDataList),
-    },
-    attachmentOptions,
-  );
+        append(
+          {
+            role: 'user',
+            content: messageText,
+            parts: createMessageParts(messageText, imageDataList),
+          },
+          attachmentOptions,
+        );
 
-  workbenchStore.resetAllFileModifications();
-} else {
-  const messageText = `[Model: ${model}]
+        workbenchStore.resetAllFileModifications();
+      } else {
+        const messageText = `[Model: ${model}]
 
 [Provider: ${provider.name}]
 
 ${finalMessageContent}`;
 
-  const attachmentOptions =
-    uploadedFiles.length > 0 ? { experimental_attachments: await filesToAttachments(uploadedFiles) } : undefined;
+        const attachmentOptions =
+          uploadedFiles.length > 0 ? { experimental_attachments: await filesToAttachments(uploadedFiles) } : undefined;
 
-  append(
-    {
-      role: 'user',
-      content: messageText,
-      parts: createMessageParts(messageText, imageDataList),
-    },
-    attachmentOptions,
-  );
+        append(
+          {
+            role: 'user',
+            content: messageText,
+            parts: createMessageParts(messageText, imageDataList),
+          },
+          attachmentOptions,
+        );
 
-  // Save user message to backend for ongoing chat
-  if (currentChat) {
-    try {
-      await sendBackendMessage(
-        currentChat.id,
-        finalMessageContent,
-        model,
-        provider: provider.name,
-        timestamp: new Date().toISOString(),
+        // Save user message to backend for ongoing chat
+        if (currentChat) {
+          try {
+            await sendBackendMessage(
+              currentChat.id,
+              finalMessageContent,
+              model,
+              provider: provider.name,
+              timestamp: new Date().toISOString(),
             });
-    logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
+logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
   } catch (error) {
-    logStore.logError('Failed to save user message to backend', error);
-    console.error('Failed to save user message:', error);
-  }
+  logStore.logError('Failed to save user message to backend', error);
+  console.error('Failed to save user message:', error);
+}
 }
       }
 
