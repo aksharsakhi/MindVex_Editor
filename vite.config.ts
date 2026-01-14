@@ -20,14 +20,6 @@ export default defineConfig((config) => {
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: false,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom'],
-            'remix-vendor': ['@remix-run/react'],
-          },
-        },
-      },
       chunkSizeWarningLimit: 1000,
     },
     plugins: [
