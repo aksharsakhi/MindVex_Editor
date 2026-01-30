@@ -16,6 +16,7 @@ import { useStore } from '@nanostores/react';
 import { authStore } from '~/lib/stores/authStore';
 import { AuthModal } from '~/components/auth/AuthModal';
 import { WorkspaceSelector } from '~/components/workbench/WorkspaceSelector';
+import { RecentRepositories } from '~/components/home/RecentRepositories';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'MindVex' }, { name: 'description', content: 'Talk with MindVex, an AI development platform' }];
@@ -125,6 +126,20 @@ export default function Index() {
                             <DirectGitCloneButton />
                           </div>
                         </div>
+
+                        {/* Recent Repositories Section */}
+                        <ClientOnly>
+                          {() => (
+                            <RecentRepositories
+                              limit={5}
+                              className="mb-8"
+                              onClone={(url) => {
+                                // Could trigger clone action here
+                                console.log('Clone requested for:', url);
+                              }}
+                            />
+                          )}
+                        </ClientOnly>
 
                         <div className="flex flex-col items-center gap-4 max-w-2xl text-center mb-8">
                           <div className="flex gap-2">

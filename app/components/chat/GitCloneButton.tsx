@@ -10,7 +10,7 @@ import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
 import { classNames } from '~/utils/classNames';
 import { Button } from '~/components/ui/Button';
 import type { IChatMetadata } from '~/lib/persistence/db';
-import { X, Github, GitBranch } from 'lucide-react';
+import { X, Github, GitBranch, Link2 } from 'lucide-react';
 
 // Import the new repository selector components
 import { GitHubRepositorySelector } from '~/components/@settings/tabs/github/components/GitHubRepositorySelector';
@@ -42,6 +42,30 @@ const ig = ignore().add(IGNORE_PATTERNS);
 const MAX_FILE_SIZE = 100 * 1024; // 100KB limit per file
 const MAX_TOTAL_SIZE = 500 * 1024; // 500KB total limit
 
+// Helper function to validate GitHub URL
+function isValidGitHubUrl(url: string): boolean {
+  const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i;
+  const githubGitPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\.git$/i;
+  return githubUrlPattern.test(url) || githubGitPattern.test(url);
+}
+
+// Helper to normalize GitHub URL
+function normalizeGitHubUrl(url: string): string {
+  let normalized = url.trim();
+
+  // Remove trailing slash
+  if (normalized.endsWith('/')) {
+    normalized = normalized.slice(0, -1);
+  }
+
+  // Add .git if not present
+  if (!normalized.endsWith('.git')) {
+    normalized = normalized + '.git';
+  }
+
+  return normalized;
+}
+
 interface GitCloneButtonProps {
   className?: string;
   importChat?: (description: string, messages: Message[], metadata?: IChatMetadata) => Promise<void>;
@@ -51,7 +75,11 @@ export default function GitCloneButton({ importChat, className }: GitCloneButton
   const { ready, gitClone } = useGit();
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<'github' | 'gitlab' | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'github' | 'gitlab' | 'url' | null>(null);
+
+  // Direct URL clone state
+  const [directUrl, setDirectUrl] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const handleClone = async (repoUrl: string) => {
     if (!ready) {
@@ -123,22 +151,21 @@ export default function GitCloneButton({ importChat, className }: GitCloneButton
         const filesMessage: Message = {
           role: 'assistant',
           content: `Cloning the repo ${repoUrl} into ${workdir}
-${
-  skippedFiles.length > 0
-    ? `\nSkipped files (${skippedFiles.length}):
+${skippedFiles.length > 0
+              ? `\nSkipped files (${skippedFiles.length}):
 ${skippedFiles.map((f) => `- ${f}`).join('\n')}`
-    : ''
-}
+              : ''
+            }
 
 <mindvexArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
 ${fileContents
-  .map(
-    (file) =>
-      `<mindvexAction type="file" filePath="${file.path}">
+              .map(
+                (file) =>
+                  `<mindvexAction type="file" filePath="${file.path}">
 ${escapeMindvexTags(file.content)}
 </mindvexAction>`,
-  )
-  .join('\n')}
+              )
+              .join('\n')}
 </mindvexArtifact>`,
           id: generateId(),
           createdAt: new Date(),
@@ -206,6 +233,26 @@ ${escapeMindvexTags(file.content)}
               </div>
 
               <div className="space-y-3">
+                {/* Clone by URL - First/Most Common Option */}
+                <button
+                  onClick={() => setSelectedProvider('url')}
+                  className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-green-500 dark:hover:border-green-400 transition-all duration-200 text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 dark:bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/20 dark:group-hover:bg-green-500/30 transition-colors">
+                      <Link2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
+                        Clone by URL
+                      </div>
+                      <div className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
+                        Enter a public GitHub repository URL
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
                 <button
                   onClick={() => setSelectedProvider('github')}
                   className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-mindvex-elements-borderColorActive dark:hover:border-mindvex-elements-borderColorActive transition-all duration-200 text-left group"
@@ -219,7 +266,7 @@ ${escapeMindvexTags(file.content)}
                         GitHub
                       </div>
                       <div className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                        Clone from GitHub repositories
+                        Browse your GitHub repositories
                       </div>
                     </div>
                   </div>
@@ -238,11 +285,126 @@ ${escapeMindvexTags(file.content)}
                         GitLab
                       </div>
                       <div className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                        Clone from GitLab repositories
+                        Browse your GitLab repositories
                       </div>
                     </div>
                   </div>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clone by URL Dialog */}
+      {isDialogOpen && selectedProvider === 'url' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-950 rounded-xl shadow-xl border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor max-w-lg w-full">
+            <div className="p-6 border-b border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 dark:bg-green-500/20 flex items-center justify-center">
+                  <Link2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
+                    Clone by URL
+                  </h3>
+                  <p className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
+                    Enter a public GitHub repository URL
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  setSelectedProvider(null);
+                  setDirectUrl('');
+                  setUrlError(null);
+                }}
+                className="p-2 rounded-lg bg-transparent hover:bg-mindvex-elements-background-depth-1 dark:hover:bg-mindvex-elements-background-depth-1 text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary dark:hover:text-mindvex-elements-textPrimary transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <X className="w-5 h-5 transition-transform duration-200 hover:rotate-90" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-mindvex-elements-textPrimary">
+                    Repository URL
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://github.com/owner/repository"
+                    value={directUrl}
+                    onChange={(e) => {
+                      setDirectUrl(e.target.value);
+                      setUrlError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && directUrl.trim()) {
+                        if (!isValidGitHubUrl(directUrl)) {
+                          setUrlError('Please enter a valid GitHub repository URL');
+                          return;
+                        }
+                        handleClone(normalizeGitHubUrl(directUrl));
+                        setDirectUrl('');
+                        setUrlError(null);
+                      }
+                    }}
+                    className={classNames(
+                      'w-full px-4 py-3 rounded-lg',
+                      'bg-mindvex-elements-background-depth-1',
+                      'border',
+                      urlError
+                        ? 'border-red-500 dark:border-red-400'
+                        : 'border-mindvex-elements-borderColor',
+                      'text-mindvex-elements-textPrimary',
+                      'placeholder-mindvex-elements-textTertiary',
+                      'focus:outline-none focus:ring-2 focus:ring-green-500/50',
+                      'transition-all duration-200',
+                    )}
+                  />
+                  {urlError && (
+                    <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>
+                  )}
+                  <p className="text-xs text-mindvex-elements-textTertiary">
+                    Example: https://github.com/facebook/react
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={() => {
+                      setSelectedProvider(null);
+                      setDirectUrl('');
+                      setUrlError(null);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!directUrl.trim()) {
+                        setUrlError('Please enter a repository URL');
+                        return;
+                      }
+                      if (!isValidGitHubUrl(directUrl)) {
+                        setUrlError('Please enter a valid GitHub repository URL');
+                        return;
+                      }
+                      handleClone(normalizeGitHubUrl(directUrl));
+                      setDirectUrl('');
+                      setUrlError(null);
+                    }}
+                    disabled={!directUrl.trim()}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Clone Repository
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

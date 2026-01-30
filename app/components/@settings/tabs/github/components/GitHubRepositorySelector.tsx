@@ -6,7 +6,8 @@ import { GitHubRepositoryCard } from './GitHubRepositoryCard';
 import type { GitHubRepoInfo } from '~/types/GitHub';
 import { useGitHubConnection, useGitHubStats } from '~/lib/hooks';
 import { classNames } from '~/utils/classNames';
-import { Search, RefreshCw, GitBranch, Calendar, Filter } from 'lucide-react';
+import { Search, RefreshCw, GitBranch, Calendar, Filter, Link2, Settings } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 interface GitHubRepositorySelectorProps {
   onClone?: (repoUrl: string, branch?: string) => void;
@@ -15,6 +16,30 @@ interface GitHubRepositorySelectorProps {
 
 type SortOption = 'updated' | 'stars' | 'name' | 'created';
 type FilterOption = 'all' | 'own' | 'forks' | 'archived';
+
+// Helper function to validate GitHub URL
+function isValidGitHubUrl(url: string): boolean {
+  const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i;
+  const githubGitPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\.git$/i;
+  return githubUrlPattern.test(url) || githubGitPattern.test(url);
+}
+
+// Helper to normalize GitHub URL
+function normalizeGitHubUrl(url: string): string {
+  let normalized = url.trim();
+
+  // Remove trailing slash
+  if (normalized.endsWith('/')) {
+    normalized = normalized.slice(0, -1);
+  }
+
+  // Add .git if not present
+  if (!normalized.endsWith('.git')) {
+    normalized = normalized + '.git';
+  }
+
+  return normalized;
+}
 
 export function GitHubRepositorySelector({ onClone, className }: GitHubRepositorySelectorProps) {
   const { connection, isConnected } = useGitHubConnection();
@@ -36,8 +61,44 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
   const [isBranchSelectorOpen, setIsBranchSelectorOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Public URL clone state
+  const [publicRepoUrl, setPublicRepoUrl] = useState('');
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+
   const repositories = stats?.repos || [];
   const REPOS_PER_PAGE = 12;
+
+  // Handle public URL clone
+  const handlePublicUrlClone = async () => {
+    if (!publicRepoUrl.trim()) {
+      setUrlError('Please enter a GitHub repository URL');
+      return;
+    }
+
+    if (!isValidGitHubUrl(publicRepoUrl)) {
+      setUrlError('Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo)');
+      return;
+    }
+
+    setIsValidatingUrl(true);
+    setUrlError(null);
+
+    try {
+      const normalizedUrl = normalizeGitHubUrl(publicRepoUrl);
+
+      if (onClone) {
+        onClone(normalizedUrl);
+        setPublicRepoUrl('');
+        toast.success('Cloning repository...');
+      }
+    } catch (err) {
+      console.error('Failed to clone public repository:', err);
+      setUrlError('Failed to clone repository. Please check the URL and try again.');
+    } finally {
+      setIsValidatingUrl(false);
+    }
+  };
 
   // Filter and search repositories
   const filteredRepositories = useMemo(() => {
@@ -138,13 +199,105 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
 
   if (!isConnected || !connection) {
     return (
-      <div className="text-center p-8">
-        <p className="text-mindvex-elements-textSecondary mb-4">
-          Please connect to GitHub first to browse repositories
-        </p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Refresh Connection
-        </Button>
+      <div className="flex flex-col gap-6 p-6">
+        {/* Public URL Clone Section */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-500/10 dark:bg-green-500/20 flex items-center justify-center">
+              <Link2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-mindvex-elements-textPrimary">
+                Clone a Public Repository
+              </h4>
+              <p className="text-sm text-mindvex-elements-textSecondary">
+                Enter a GitHub repository URL to clone
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="https://github.com/owner/repository"
+                value={publicRepoUrl}
+                onChange={(e) => {
+                  setPublicRepoUrl(e.target.value);
+                  setUrlError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isValidatingUrl) {
+                    handlePublicUrlClone();
+                  }
+                }}
+                className={classNames(
+                  'flex-1 px-4 py-3 rounded-lg',
+                  'bg-mindvex-elements-background-depth-1',
+                  'border',
+                  urlError
+                    ? 'border-red-500 dark:border-red-400'
+                    : 'border-mindvex-elements-borderColor',
+                  'text-mindvex-elements-textPrimary',
+                  'placeholder-mindvex-elements-textTertiary',
+                  'focus:outline-none focus:ring-2 focus:ring-green-500/50',
+                  'transition-all duration-200',
+                )}
+              />
+              <Button
+                onClick={handlePublicUrlClone}
+                disabled={isValidatingUrl || !publicRepoUrl.trim()}
+                variant="default"
+                className="px-6 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isValidatingUrl ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    Cloning...
+                  </div>
+                ) : (
+                  'Clone'
+                )}
+              </Button>
+            </div>
+
+            {urlError && (
+              <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>
+            )}
+
+            <p className="text-xs text-mindvex-elements-textTertiary">
+              Example: https://github.com/facebook/react
+            </p>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 border-t border-mindvex-elements-borderColor" />
+          <span className="text-sm text-mindvex-elements-textTertiary">or</span>
+          <div className="flex-1 border-t border-mindvex-elements-borderColor" />
+        </div>
+
+        {/* Connect to GitHub Section */}
+        <div className="flex flex-col items-center gap-4 p-6 rounded-lg bg-mindvex-elements-background-depth-1 border border-mindvex-elements-borderColor">
+          <div className="flex items-center gap-3">
+            <Settings className="w-5 h-5 text-mindvex-elements-textTertiary" />
+            <p className="text-mindvex-elements-textSecondary">
+              Connect to GitHub to browse your private repositories
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Navigate to settings
+              window.location.href = '/?settings=github';
+            }}
+            className="flex items-center gap-2"
+          >
+            <GitBranch className="w-4 h-4" />
+            Connect GitHub Account
+          </Button>
+        </div>
       </div>
     );
   }
