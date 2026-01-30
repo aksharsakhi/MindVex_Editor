@@ -7,9 +7,8 @@ export function GitHubButton() {
 
     const handleGitHubLogin = () => {
         setIsLoading(true);
-        // Redirect to backend OAuth endpoint
-        const redirectUri = `${window.location.origin}/auth/callback`;
-        window.location.href = `${API_BASE_URL}/auth/oauth2/authorize/github?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        // Redirect to backend OAuth endpoint - backend will handle redirect_uri
+        window.location.href = `${API_BASE_URL}/auth/oauth2/authorize/github`;
     };
 
     return (
