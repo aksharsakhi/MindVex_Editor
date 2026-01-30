@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import type { GitHubUserResponse, GitHubConnection } from '~/types/GitHub';
 import { useGitHubAPI } from './useGitHubAPI';
 import { githubConnection, isConnecting, updateGitHubConnection } from '~/lib/stores/github';
+import { gitHubConnectionApiService } from '~/lib/services/gitHubConnectionApiService';
 
 export interface ConnectionState {
   isConnected: boolean;
@@ -13,6 +14,7 @@ export interface ConnectionState {
   connection: GitHubConnection | null;
   error: string | null;
   isServerSide: boolean; // Indicates if this is a server-side connection
+  isOAuthConnection: boolean; // Indicates if connected via OAuth
 }
 
 export interface UseGitHubConnectionReturn extends ConnectionState {
@@ -20,6 +22,7 @@ export interface UseGitHubConnectionReturn extends ConnectionState {
   disconnect: () => void;
   refreshConnection: () => Promise<void>;
   testConnection: () => Promise<boolean>;
+  tryAutoConnect: () => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'github_connection';
@@ -29,6 +32,7 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
   const connecting = useStore(isConnecting);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOAuthConnection, setIsOAuthConnection] = useState(false);
 
   // Create API instance - will update when connection changes
   useGitHubAPI();
@@ -36,6 +40,69 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
   // Load saved connection on mount
   useEffect(() => {
     loadSavedConnection();
+  }, []);
+
+  /**
+   * Try to auto-connect using OAuth token from backend.
+   * This is called when user logged in via GitHub OAuth.
+   */
+  const tryAutoConnect = useCallback(async (): Promise<boolean> => {
+    try {
+      console.log('Trying to auto-connect using OAuth token from backend...');
+
+      const oauthConnection = await gitHubConnectionApiService.getConnection();
+
+      if (!oauthConnection?.connected || !oauthConnection.accessToken) {
+        console.log('No OAuth token available from backend');
+        return false;
+      }
+
+      console.log('OAuth token found, connecting to GitHub API...');
+
+      // Use the OAuth token to connect
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${oauthConnection.accessToken}`,
+          'User-Agent': 'MindVex',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn('OAuth token validation failed:', response.status);
+        return false;
+      }
+
+      const userData = (await response.json()) as GitHubUserResponse;
+
+      // Create connection object
+      const connectionData: GitHubConnection = {
+        user: userData,
+        token: oauthConnection.accessToken,
+        tokenType: 'fine-grained', // OAuth tokens are similar to fine-grained
+      };
+
+      // Set cookies for API requests
+      Cookies.set('githubToken', oauthConnection.accessToken);
+      Cookies.set('githubUsername', userData.login);
+      Cookies.set(
+        'git:github.com',
+        JSON.stringify({
+          username: oauthConnection.accessToken,
+          password: 'x-oauth-basic',
+        }),
+      );
+
+      // Update the store
+      updateGitHubConnection(connectionData);
+      setIsOAuthConnection(true);
+
+      console.log(`Auto-connected to GitHub as ${userData.login} via OAuth`);
+      return true;
+    } catch (error) {
+      console.error('Auto-connect failed:', error);
+      return false;
+    }
   }, []);
 
   const loadSavedConnection = useCallback(async () => {
@@ -52,6 +119,14 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
       // If we have a token but no user, or incomplete data, refresh
       if (connection?.token && (!connection.user || !connection.stats)) {
         await refreshConnectionData(connection);
+        setIsLoading(false);
+        return;
+      }
+
+      // Try to auto-connect using OAuth token from backend
+      const autoConnected = await tryAutoConnect();
+      if (autoConnected) {
+        console.log('Successfully auto-connected via OAuth');
       }
 
       setIsLoading(false);
@@ -63,7 +138,7 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
       // Clean up corrupted data
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, [connection]);
+  }, [connection, tryAutoConnect]);
 
   const refreshConnectionData = useCallback(async (connection: GitHubConnection) => {
     if (!connection.token) {
@@ -242,9 +317,12 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
     connection,
     error,
     isServerSide: !connection?.token, // Server-side if no token
+    isOAuthConnection,
     connect,
     disconnect,
     refreshConnection,
     testConnection,
+    tryAutoConnect,
   };
 }
+
