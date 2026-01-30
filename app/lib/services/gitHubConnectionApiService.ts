@@ -12,9 +12,10 @@ export interface GitHubConnectionResponse {
 
 /**
  * Get the JWT token from cookies or localStorage
+ * Note: auth.callback.tsx stores it as 'auth_token'
  */
 function getAuthToken(): string | null {
-    return Cookies.get('authToken') || localStorage.getItem('authToken');
+    return Cookies.get('auth_token') || localStorage.getItem('auth_token');
 }
 
 /**
