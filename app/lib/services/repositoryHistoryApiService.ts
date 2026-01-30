@@ -26,7 +26,7 @@ interface RepositoryHistoryRequest {
  * Get the JWT token from cookies
  */
 function getAuthToken(): string | null {
-    return Cookies.get('authToken') || localStorage.getItem('authToken');
+    return Cookies.get('auth_token') || localStorage.getItem('auth_token');
 }
 
 /**
@@ -83,8 +83,8 @@ export const repositoryHistoryApiService = {
             if (!response.ok) {
                 if (response.status === 401) {
                     console.warn('Unauthorized: clearing auth token');
-                    Cookies.remove('authToken');
-                    localStorage.removeItem('authToken');
+                    Cookies.remove('auth_token');
+                    localStorage.removeItem('auth_token');
                     return [];
                 }
                 throw new Error(`Failed to fetch repository history: ${response.status}`);
@@ -122,8 +122,8 @@ export const repositoryHistoryApiService = {
             if (!response.ok) {
                 if (response.status === 401) {
                     console.warn('Unauthorized: clearing auth token');
-                    Cookies.remove('authToken');
-                    localStorage.removeItem('authToken');
+                    Cookies.remove('auth_token');
+                    localStorage.removeItem('auth_token');
                     return null;
                 }
                 throw new Error(`Failed to add repository to history: ${response.status}`);
@@ -163,8 +163,8 @@ export const repositoryHistoryApiService = {
             if (!response.ok) {
                 if (response.status === 401) {
                     console.warn('Unauthorized: clearing auth token');
-                    Cookies.remove('authToken');
-                    localStorage.removeItem('authToken');
+                    Cookies.remove('auth_token');
+                    localStorage.removeItem('auth_token');
                 }
                 return false;
             }
@@ -199,8 +199,8 @@ export const repositoryHistoryApiService = {
             if (!response.ok) {
                 if (response.status === 401) {
                     console.warn('Unauthorized: clearing auth token');
-                    Cookies.remove('authToken');
-                    localStorage.removeItem('authToken');
+                    Cookies.remove('auth_token');
+                    localStorage.removeItem('auth_token');
                 }
                 return false;
             }
