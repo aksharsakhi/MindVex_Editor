@@ -42,7 +42,7 @@ function normalizeGitHubUrl(url: string): string {
 }
 
 export function GitHubRepositorySelector({ onClone, className }: GitHubRepositorySelectorProps) {
-  const { connection, isConnected } = useGitHubConnection();
+  const { connection, isConnected, isLoading: isGitHubLoading, tryAutoConnect } = useGitHubConnection();
   const {
     stats,
     isLoading: isStatsLoading,
@@ -197,9 +197,35 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
     setCurrentPage(1);
   }, [searchQuery, sortBy, filterBy]);
 
+  // Attempt auto-connect if not connected
+  useEffect(() => {
+    if (!isConnected && !isGitHubLoading && tryAutoConnect) {
+      tryAutoConnect();
+    }
+  }, [isConnected, isGitHubLoading, tryAutoConnect]);
+
   if (!isConnected || !connection) {
+    // Show loading state while attempting to connect
+    if (isGitHubLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 space-y-4">
+          <div className="animate-spin w-8 h-8 border-2 border-mindvex-elements-borderColorActive border-t-transparent rounded-full" />
+          <p className="text-sm text-mindvex-elements-textSecondary">Connecting to GitHub...</p>
+        </div>
+      );
+    }
+
+    // If not connected after attempting, show the public URL clone option
     return (
       <div className="flex flex-col gap-6 p-6">
+        {/* Info Message */}
+        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Tip:</strong> To browse your private repositories, log in with GitHub OAuth.
+            For public repositories, you can use the URL clone option below.
+          </p>
+        </div>
+
         {/* Public URL Clone Section */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
@@ -269,34 +295,6 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
               Example: https://github.com/facebook/react
             </p>
           </div>
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 border-t border-mindvex-elements-borderColor" />
-          <span className="text-sm text-mindvex-elements-textTertiary">or</span>
-          <div className="flex-1 border-t border-mindvex-elements-borderColor" />
-        </div>
-
-        {/* Connect to GitHub Section */}
-        <div className="flex flex-col items-center gap-4 p-6 rounded-lg bg-mindvex-elements-background-depth-1 border border-mindvex-elements-borderColor">
-          <div className="flex items-center gap-3">
-            <Settings className="w-5 h-5 text-mindvex-elements-textTertiary" />
-            <p className="text-mindvex-elements-textSecondary">
-              Connect to GitHub to browse your private repositories
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              // Navigate to settings
-              window.location.href = '/?settings=github';
-            }}
-            className="flex items-center gap-2"
-          >
-            <GitBranch className="w-4 h-4" />
-            Connect GitHub Account
-          </Button>
         </div>
       </div>
     );

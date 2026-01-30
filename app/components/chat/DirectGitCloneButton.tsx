@@ -2,16 +2,16 @@ import ignore from 'ignore';
 import { useGit } from '~/lib/hooks/useGit';
 import { importGitRepoToWorkbench } from '~/utils/workbenchImport';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
 import { classNames } from '~/utils/classNames';
 import { Button } from '~/components/ui/Button';
 import { X, Github, GitBranch, Link2 } from 'lucide-react';
+import { useGitHubConnection } from '~/lib/hooks/useGitHubConnection';
 
-// Import the repository selector components
+// Import the repository selector component
 import { GitHubRepositorySelector } from '~/components/@settings/tabs/github/components/GitHubRepositorySelector';
-import { GitLabRepositorySelector } from '~/components/@settings/tabs/gitlab/components/GitLabRepositorySelector';
 
 const IGNORE_PATTERNS = [
   'node_modules/**',
@@ -29,8 +29,7 @@ const IGNORE_PATTERNS = [
   '**/npm-debug.log*',
   '**/yarn-debug.log*',
   '**/yarn-error.log*',
-
-  // Include this so npm install runs much faster '**/*lock.json',
+  '**/*lock.json',
   '**/*lock.yaml',
 ];
 
@@ -71,11 +70,19 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
   const { ready, gitClone } = useGit();
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<'github' | 'gitlab' | 'url' | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'github' | 'url' | null>(null);
+  const { isConnected, isLoading: isGitHubLoading, tryAutoConnect } = useGitHubConnection();
 
   // Direct URL clone state
   const [directUrl, setDirectUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
+
+  // Try to auto-connect when dialog opens and user selects GitHub
+  useEffect(() => {
+    if (isDialogOpen && selectedProvider === 'github' && !isConnected && !isGitHubLoading) {
+      tryAutoConnect();
+    }
+  }, [isDialogOpen, selectedProvider, isConnected, isGitHubLoading, tryAutoConnect]);
 
   const handleClone = async (repoUrl: string) => {
     if (!ready) {
@@ -143,14 +150,14 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
         </div>
       </Button>
 
-      {/* Provider Selection Dialog */}
+      {/* Provider Selection Dialog - Only URL and GitHub options */}
       {isDialogOpen && !selectedProvider && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-950 rounded-xl shadow-xl border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
-                  Choose Repository Provider
+                  Import Repository
                 </h3>
                 <button
                   onClick={() => setIsDialogOpen(false)}
@@ -161,7 +168,7 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
               </div>
 
               <div className="space-y-3">
-                {/* Clone by URL - First/Most Common Option */}
+                {/* Clone by URL - For public repositories */}
                 <button
                   onClick={() => setSelectedProvider('url')}
                   className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-green-500 dark:hover:border-green-400 transition-all duration-200 text-left group"
@@ -181,39 +188,28 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                   </div>
                 </button>
 
+                {/* GitHub - For authenticated users to browse their repos */}
                 <button
                   onClick={() => setSelectedProvider('github')}
-                  className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-mindvex-elements-borderColorActive dark:hover:border-mindvex-elements-borderColorActive transition-all duration-200 text-left group"
+                  className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200 text-left group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/20 dark:group-hover:bg-blue-500/30 transition-colors">
                       <Github className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <div className="font-medium text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
-                        GitHub
+                      <div className="font-medium text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary flex items-center gap-2">
+                        My GitHub Repositories
+                        {isConnected && (
+                          <span className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">
+                            Connected
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                        Browse your GitHub repositories
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setSelectedProvider('gitlab')}
-                  className="w-full p-4 rounded-lg bg-mindvex-elements-background-depth-1 dark:bg-mindvex-elements-background-depth-1 hover:bg-mindvex-elements-background-depth-2 dark:hover:bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor hover:border-mindvex-elements-borderColorActive dark:hover:border-mindvex-elements-borderColorActive transition-all duration-200 text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center group-hover:bg-orange-500/20 dark:group-hover:bg-orange-500/30 transition-colors">
-                      <GitBranch className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
-                        GitLab
-                      </div>
-                      <div className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                        Browse your GitLab repositories
+                        {isConnected
+                          ? 'Browse and import your private/public repositories'
+                          : 'View your GitHub repositories (via OAuth login)'}
                       </div>
                     </div>
                   </div>
@@ -339,7 +335,7 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
         </div>
       )}
 
-      {/* GitHub Repository Selection */}
+      {/* GitHub Repository Selection - Shows repository list or loading */}
       {isDialogOpen && selectedProvider === 'github' && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-950 rounded-xl shadow-xl border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor w-full max-w-4xl max-h-[90vh] overflow-hidden">
@@ -350,10 +346,12 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
-                    Import GitHub Repository
+                    My GitHub Repositories
                   </h3>
                   <p className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                    Clone a repository from GitHub to your workbench
+                    {isConnected
+                      ? 'Select a repository to clone'
+                      : 'Connecting to your GitHub account...'}
                   </p>
                 </div>
               </div>
@@ -370,42 +368,6 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
 
             <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
               <GitHubRepositorySelector onClone={handleClone} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GitLab Repository Selection */}
-      {isDialogOpen && selectedProvider === 'gitlab' && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-950 rounded-xl shadow-xl border border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-mindvex-elements-borderColor dark:border-mindvex-elements-borderColor flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center">
-                  <GitBranch className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-mindvex-elements-textPrimary dark:text-mindvex-elements-textPrimary">
-                    Import GitLab Repository
-                  </h3>
-                  <p className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                    Clone a repository from GitLab to your workbench
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setIsDialogOpen(false);
-                  setSelectedProvider(null);
-                }}
-                className="p-2 rounded-lg bg-transparent hover:bg-mindvex-elements-background-depth-1 dark:hover:bg-mindvex-elements-background-depth-1 text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary dark:hover:text-mindvex-elements-textPrimary transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <X className="w-5 h-5 transition-transform duration-200 hover:rotate-90" />
-              </button>
-            </div>
-
-            <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
-              <GitLabRepositorySelector onClone={handleClone} />
             </div>
           </div>
         </div>
