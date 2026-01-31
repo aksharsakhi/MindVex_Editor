@@ -1,6 +1,11 @@
 /**
- * API Service for IBM watsonx Orchestrate integration.
- * Communicates with the backend which proxies to watsonx.
+ * API Service for MindVex AI capabilities.
+ * Communicates with the backend which invokes watsonx Orchestrate agents.
+ *
+ * Architecture:
+ * Frontend (this service) → Backend /api/ai/* → watsonx Orchestrate → Backend Tools
+ *
+ * The frontend NEVER communicates directly with IBM services.
  */
 
 import type {
@@ -11,7 +16,7 @@ import type {
     FileContext,
 } from '~/types/watsonx';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
 class WatsonxApiService {
     /**
@@ -32,7 +37,7 @@ class WatsonxApiService {
         if (!response.ok) {
             try {
                 const error = await response.json();
-                throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(error.message || error.errorMessage || `HTTP ${response.status}: ${response.statusText}`);
             } catch {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -40,11 +45,15 @@ class WatsonxApiService {
         return response.json();
     }
 
+    // ============================================
+    // Management Endpoints
+    // ============================================
+
     /**
-     * Get list of available AI agents.
+     * Get list of available AI agents and their configuration status.
      */
     async getAgents(): Promise<WatsonxAgent[]> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/agents`, {
+        const response = await fetch(`${API_BASE_URL}/api/watsonx/agents`, {
             headers: this.getAuthHeaders(),
         });
         return this.handleResponse<WatsonxAgent[]>(response);
@@ -54,17 +63,17 @@ class WatsonxApiService {
      * Check watsonx health and configuration status.
      */
     async checkHealth(): Promise<WatsonxHealthStatus> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/health`, {
+        const response = await fetch(`${API_BASE_URL}/api/watsonx/health`, {
             headers: this.getAuthHeaders(),
         });
         return this.handleResponse<WatsonxHealthStatus>(response);
     }
 
     /**
-     * Send a chat message to a specific agent.
+     * Generic agent chat - send to any agent by ID.
      */
     async chat(request: WatsonxChatRequest): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/chat`, {
+        const response = await fetch(`${API_BASE_URL}/api/watsonx/chat`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(request),
@@ -72,11 +81,16 @@ class WatsonxApiService {
         return this.handleResponse<WatsonxChatResponse>(response);
     }
 
+    // ============================================
+    // AI Action Endpoints (as per integration report)
+    // ============================================
+
     /**
-     * Analyze codebase with AI.
+     * Analyze codebase with MindVex Codebase Analyzer.
+     * Detects bugs, code smells, security issues, and suggests improvements.
      */
     async analyzeCodebase(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/analyze`, {
+        const response = await fetch(`${API_BASE_URL}/api/ai/codebase/analyze`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify({ agentId: 'codebase-analysis', message, files }),
@@ -85,46 +99,11 @@ class WatsonxApiService {
     }
 
     /**
-     * Review code changes with AI.
-     */
-    async reviewCode(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/review`, {
-            method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({ agentId: 'code-review', message, files }),
-        });
-        return this.handleResponse<WatsonxChatResponse>(response);
-    }
-
-    /**
-     * Generate documentation with AI.
-     */
-    async generateDocumentation(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/document`, {
-            method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({ agentId: 'documentation', message, files }),
-        });
-        return this.handleResponse<WatsonxChatResponse>(response);
-    }
-
-    /**
-     * Ask questions about the codebase.
-     */
-    async askQuestion(question: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/ask`, {
-            method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({ agentId: 'qa-agent', message: question, files }),
-        });
-        return this.handleResponse<WatsonxChatResponse>(response);
-    }
-
-    /**
-     * Request code modifications.
+     * Modify code with MindVex Code Modifier.
+     * Generates code changes based on user instructions.
      */
     async modifyCode(instruction: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/modify`, {
+        const response = await fetch(`${API_BASE_URL}/api/ai/code/modify`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify({ agentId: 'code-modifier', message: instruction, files }),
@@ -133,10 +112,50 @@ class WatsonxApiService {
     }
 
     /**
-     * Analyze dependencies.
+     * Ask questions about code with MindVex Code Q&A.
+     * Explains functions, classes, and architecture.
+     */
+    async askQuestion(question: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
+        const response = await fetch(`${API_BASE_URL}/api/ai/code/ask`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({ agentId: 'code-qa', message: question, files }),
+        });
+        return this.handleResponse<WatsonxChatResponse>(response);
+    }
+
+    /**
+     * Review code with MindVex Code Reviewer.
+     * Checks for issues, suggests improvements.
+     */
+    async reviewCode(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
+        const response = await fetch(`${API_BASE_URL}/api/ai/code/review`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({ agentId: 'code-review', message, files }),
+        });
+        return this.handleResponse<WatsonxChatResponse>(response);
+    }
+
+    /**
+     * Generate documentation with MindVex Documentation Generator.
+     * Creates READMEs, API docs, comments.
+     */
+    async generateDocumentation(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
+        const response = await fetch(`${API_BASE_URL}/api/ai/code/document`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({ agentId: 'documentation', message, files }),
+        });
+        return this.handleResponse<WatsonxChatResponse>(response);
+    }
+
+    /**
+     * Analyze dependencies with MindVex Dependency Mapper.
+     * Generates dependency graphs and detects circular dependencies.
      */
     async analyzeDependencies(message: string, files?: FileContext[]): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/dependencies`, {
+        const response = await fetch(`${API_BASE_URL}/api/ai/dependencies/analyze`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify({ agentId: 'dependency-graph', message, files }),
@@ -145,13 +164,14 @@ class WatsonxApiService {
     }
 
     /**
-     * Get Git assistance.
+     * Get Git assistance with MindVex Git Assistant.
+     * Helps with commits, pushes, PR descriptions.
      */
     async getGitHelp(message: string): Promise<WatsonxChatResponse> {
-        const response = await fetch(`${API_BASE_URL}/watsonx/git-help`, {
+        const response = await fetch(`${API_BASE_URL}/api/ai/git/assist`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
-            body: JSON.stringify({ agentId: 'pushing-agent', message }),
+            body: JSON.stringify({ agentId: 'git-assistant', message }),
         });
         return this.handleResponse<WatsonxChatResponse>(response);
     }
@@ -159,3 +179,6 @@ class WatsonxApiService {
 
 // Export singleton instance
 export const watsonxApi = new WatsonxApiService();
+
+// Also export class for testing
+export { WatsonxApiService };
