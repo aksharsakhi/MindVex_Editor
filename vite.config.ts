@@ -3,6 +3,7 @@ import UnoCSS from 'unocss/vite';
 import { defineConfig, type ViteDevServer } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
+import { viteStaticCopy } from 'vite-plugin-copy';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import * as dotenv from 'dotenv';
 
@@ -21,6 +22,10 @@ export default defineConfig((config) => {
       minify: 'esbuild',
       sourcemap: false,
       chunkSizeWarningLimit: 1000,
+    },
+    assetsInclude: ['**/*.wasm'],
+    optimizeDeps: {
+      exclude: ['web-tree-sitter'],
     },
     plugins: [
       nodePolyfills({
@@ -60,6 +65,14 @@ export default defineConfig((config) => {
       tsconfigPaths(),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
+      viteStaticCopy({
+        targets: [
+          {
+            src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
+            dest: '.',
+          },
+        ],
+      }),
     ].filter(Boolean),
     envPrefix: [
       'VITE_',
