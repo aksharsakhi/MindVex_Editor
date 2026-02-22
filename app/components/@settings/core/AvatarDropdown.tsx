@@ -54,7 +54,9 @@ export const AvatarDropdown = ({ onSelectTab }: AvatarDropdownProps) => {
               <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                 {auth.user?.fullName || auth.user?.email || 'Guest User'}
               </div>
-              {auth.user?.email && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{auth.user.email}</div>}
+              {auth.user?.email && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{auth.user.email}</div>
+              )}
             </div>
           </div>
 

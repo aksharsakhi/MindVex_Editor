@@ -423,7 +423,7 @@ export function ArchitectureGraph() {
       const updatedGraph = updater.updateGraph(
         graph,
         changedFiles,
-        builder.parsers, // Access the private parsers map
+        (builder as any).parsers, // Access the private parsers map
       );
 
       setGraph(updatedGraph as KnowledgeGraph);

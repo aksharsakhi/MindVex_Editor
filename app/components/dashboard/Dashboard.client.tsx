@@ -8,7 +8,6 @@ import { toast } from 'react-toastify';
 import { workbenchStore, quickActionsStore } from '~/lib/stores/workbench';
 import { WORK_DIR } from '~/utils/constants';
 
-
 interface LanguageDistribution {
   language: string;
   count: number;
@@ -37,7 +36,6 @@ interface DashboardState {
 }
 
 export function Dashboard() {
-
   const [dashboardState, setDashboardState] = useState<DashboardState>({
     loading: false,
     data: {
@@ -509,8 +507,6 @@ export function Dashboard() {
         totalCommentLines,
         totalBlankLines,
       });
-
-
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -598,8 +594,6 @@ export function Dashboard() {
     return 'Needs Attention';
   };
 
-
-
   return (
     <div className="h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6 overflow-y-auto">
       {/* Header */}
@@ -647,8 +641,6 @@ export function Dashboard() {
             )}
           </button>
         </div>
-
-
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -978,10 +970,11 @@ export function Dashboard() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Potential Issues</h2>
               <span
-                className={`px-3 py-1 rounded-full text-sm ${dashboardData.potentialIssues.length === 0
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-red-500/20 text-red-400'
-                  }`}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  dashboardData.potentialIssues.length === 0
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}
               >
                 {dashboardData.potentialIssues.length} issues
               </span>

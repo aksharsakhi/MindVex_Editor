@@ -60,3 +60,5 @@ docs/instructions/Roadmap.md
 !docs/
 !docs/features/
 !docs/*.md
+
+vite.config.ts.timestamp*

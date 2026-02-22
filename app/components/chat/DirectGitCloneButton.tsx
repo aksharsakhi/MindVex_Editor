@@ -42,6 +42,7 @@ const MAX_TOTAL_SIZE = 500 * 1024; // 500KB total limit
 function isValidGitHubUrl(url: string): boolean {
   const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i;
   const githubGitPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\.git$/i;
+
   return githubUrlPattern.test(url) || githubGitPattern.test(url);
 }
 
@@ -254,9 +255,7 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
             <div className="p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-mindvex-elements-textPrimary">
-                    Repository URL
-                  </label>
+                  <label className="text-sm font-medium text-mindvex-elements-textPrimary">Repository URL</label>
                   <input
                     type="text"
                     placeholder="https://github.com/owner/repository"
@@ -271,6 +270,7 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                           setUrlError('Please enter a valid GitHub repository URL');
                           return;
                         }
+
                         handleClone(normalizeGitHubUrl(directUrl));
                         setDirectUrl('');
                         setUrlError(null);
@@ -280,18 +280,14 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                       'w-full px-4 py-3 rounded-lg',
                       'bg-mindvex-elements-background-depth-1',
                       'border',
-                      urlError
-                        ? 'border-red-500 dark:border-red-400'
-                        : 'border-mindvex-elements-borderColor',
+                      urlError ? 'border-red-500 dark:border-red-400' : 'border-mindvex-elements-borderColor',
                       'text-mindvex-elements-textPrimary',
                       'placeholder-mindvex-elements-textTertiary',
                       'focus:outline-none focus:ring-2 focus:ring-green-500/50',
                       'transition-all duration-200',
                     )}
                   />
-                  {urlError && (
-                    <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>
-                  )}
+                  {urlError && <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>}
                   <p className="text-xs text-mindvex-elements-textTertiary">
                     Example: https://github.com/facebook/react
                   </p>
@@ -315,10 +311,12 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                         setUrlError('Please enter a repository URL');
                         return;
                       }
+
                       if (!isValidGitHubUrl(directUrl)) {
                         setUrlError('Please enter a valid GitHub repository URL');
                         return;
                       }
+
                       handleClone(normalizeGitHubUrl(directUrl));
                       setDirectUrl('');
                       setUrlError(null);
@@ -349,9 +347,7 @@ export default function DirectGitCloneButton({ className }: DirectGitCloneButton
                     My GitHub Repositories
                   </h3>
                   <p className="text-sm text-mindvex-elements-textSecondary dark:text-mindvex-elements-textSecondary">
-                    {isConnected
-                      ? 'Select a repository to clone'
-                      : 'Connecting to your GitHub account...'}
+                    {isConnected ? 'Select a repository to clone' : 'Connecting to your GitHub account...'}
                   </p>
                 </div>
               </div>

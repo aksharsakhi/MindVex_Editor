@@ -14,22 +14,24 @@ import { HIGHLIGHT_QUERIES } from './highlightQueries';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface HighlightRange {
-    from: number;       // byte offset in the source string
-    to: number;
-    className: string;  // e.g. 'ts-keyword'
+  from: number; // byte offset in the source string
+  to: number;
+  className: string; // e.g. 'ts-keyword'
 }
 
 // ─── Query Cache ──────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const queryCache = new Map<SupportedLanguage, any>();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getQuery(language: SupportedLanguage, tsLanguage: any): any {
-    if (queryCache.has(language)) return queryCache.get(language)!;
-    const q = tsLanguage.query(HIGHLIGHT_QUERIES[language]);
-    queryCache.set(language, q);
-    return q;
+  if (queryCache.has(language)) {
+    return queryCache.get(language)!;
+  }
+
+  const q = tsLanguage.query(HIGHLIGHT_QUERIES[language]);
+  queryCache.set(language, q);
+
+  return q;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -42,30 +44,28 @@ function getQuery(language: SupportedLanguage, tsLanguage: any): any {
  * @param tsLanguage - The Parser.Language instance (needed to compile the query)
  */
 export function getHighlightRanges(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tree: any,
-    language: SupportedLanguage,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tsLanguage: any,
+  tree: any,
+  language: SupportedLanguage,
+
+  tsLanguage: any,
 ): HighlightRange[] {
-    const query = getQuery(language, tsLanguage);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matches: any[] = query.matches(tree.rootNode);
-    const ranges: HighlightRange[] = [];
+  const query = getQuery(language, tsLanguage);
 
-    for (const match of matches) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const capture of match.captures as any[]) {
-            const node = capture.node;
-            const captureName: string = capture.name;
+  const matches: any[] = query.matches(tree.rootNode);
+  const ranges: HighlightRange[] = [];
 
-            ranges.push({
-                from: node.startIndex,
-                to: node.endIndex,
-                className: `ts-${captureName}`,
-            });
-        }
+  for (const match of matches) {
+    for (const capture of match.captures as any[]) {
+      const node = capture.node;
+      const captureName: string = capture.name;
+
+      ranges.push({
+        from: node.startIndex,
+        to: node.endIndex,
+        className: `ts-${captureName}`,
+      });
     }
+  }
 
-    return ranges;
+  return ranges;
 }

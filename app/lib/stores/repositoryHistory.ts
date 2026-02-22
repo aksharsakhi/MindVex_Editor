@@ -49,6 +49,7 @@ class RepositoryHistoryStore {
     }
 
     this._isLoading.set(true);
+
     try {
       const backendHistory = await repositoryHistoryApiService.getHistory();
 
@@ -65,6 +66,7 @@ class RepositoryHistoryStore {
       } else {
         // If backend is empty but local has data, push local to backend
         const localItems = this.getAllRepositories();
+
         if (localItems.length > 0) {
           for (const item of localItems) {
             await repositoryHistoryApiService.addRepository({
@@ -115,7 +117,7 @@ class RepositoryHistoryStore {
   private enforceMaxLimit() {
     const currentHistory = this._repositoryHistory.get();
     const items = Object.values(currentHistory).sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 
     if (items.length > MAX_LOCAL_REPOSITORIES) {
@@ -154,13 +156,15 @@ class RepositoryHistoryStore {
 
       // Sync with backend if authenticated
       if (isAuthenticated()) {
-        repositoryHistoryApiService.addRepository({
-          url: repoUrl,
-          name: repoName,
-          description: description || existingRepo.description,
-          branch,
-          commitHash,
-        }).catch(console.error);
+        repositoryHistoryApiService
+          .addRepository({
+            url: repoUrl,
+            name: repoName,
+            description: description || existingRepo.description,
+            branch,
+            commitHash,
+          })
+          .catch(console.error);
       }
 
       return updatedItem;
@@ -189,22 +193,25 @@ class RepositoryHistoryStore {
 
     // Sync with backend if authenticated
     if (isAuthenticated()) {
-      repositoryHistoryApiService.addRepository({
-        url: repoUrl,
-        name: repoName,
-        description: description || `Repository: ${repoName}`,
-        branch,
-        commitHash,
-      }).then((backendItem) => {
-        // Update local item with backend ID if available
-        if (backendItem) {
-          const current = this._repositoryHistory.get();
-          delete current[id];
-          current[backendItem.id] = backendItem;
-          this._repositoryHistory.set({ ...current });
-          this.saveToStorage();
-        }
-      }).catch(console.error);
+      repositoryHistoryApiService
+        .addRepository({
+          url: repoUrl,
+          name: repoName,
+          description: description || `Repository: ${repoName}`,
+          branch,
+          commitHash,
+        })
+        .then((backendItem) => {
+          // Update local item with backend ID if available
+          if (backendItem) {
+            const current = this._repositoryHistory.get();
+            delete current[id];
+            current[backendItem.id] = backendItem;
+            this._repositoryHistory.set({ ...current });
+            this.saveToStorage();
+          }
+        })
+        .catch(console.error);
     }
 
     return newItem;

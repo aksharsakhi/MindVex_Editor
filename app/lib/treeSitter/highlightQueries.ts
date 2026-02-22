@@ -18,8 +18,7 @@
 import type { SupportedLanguage } from './treeSitterParser';
 
 export const HIGHLIGHT_QUERIES: Record<SupportedLanguage, string> = {
-
-    java: `
+  java: `
     ; Keywords
     [
       "abstract" "assert" "break" "case" "catch" "class" "continue"
@@ -66,7 +65,7 @@ export const HIGHLIGHT_QUERIES: Record<SupportedLanguage, string> = {
      "->" "::" "?" ":"] @operator
   `,
 
-    python: `
+  python: `
     ; Keywords
     [
       "and" "as" "assert" "async" "await" "break" "class" "continue"
@@ -105,7 +104,7 @@ export const HIGHLIGHT_QUERIES: Record<SupportedLanguage, string> = {
      "and" "or" "not" "in" "is" "->" ":=" "|"] @operator
   `,
 
-    typescript: `
+  typescript: `
     ; Keywords
     [
       "abstract" "as" "async" "await" "break" "case" "catch" "class"
@@ -148,7 +147,7 @@ export const HIGHLIGHT_QUERIES: Record<SupportedLanguage, string> = {
     (property_identifier) @property
   `,
 
-    javascript: `
+  javascript: `
     ; Keywords
     [
       "as" "async" "await" "break" "case" "catch" "class" "const"

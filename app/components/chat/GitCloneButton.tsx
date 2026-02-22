@@ -46,6 +46,7 @@ const MAX_TOTAL_SIZE = 500 * 1024; // 500KB total limit
 function isValidGitHubUrl(url: string): boolean {
   const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i;
   const githubGitPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\.git$/i;
+
   return githubUrlPattern.test(url) || githubGitPattern.test(url);
 }
 
@@ -151,21 +152,22 @@ export default function GitCloneButton({ importChat, className }: GitCloneButton
         const filesMessage: Message = {
           role: 'assistant',
           content: `Cloning the repo ${repoUrl} into ${workdir}
-${skippedFiles.length > 0
-              ? `\nSkipped files (${skippedFiles.length}):
+${
+  skippedFiles.length > 0
+    ? `\nSkipped files (${skippedFiles.length}):
 ${skippedFiles.map((f) => `- ${f}`).join('\n')}`
-              : ''
-            }
+    : ''
+}
 
 <mindvexArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
 ${fileContents
-              .map(
-                (file) =>
-                  `<mindvexAction type="file" filePath="${file.path}">
+  .map(
+    (file) =>
+      `<mindvexAction type="file" filePath="${file.path}">
 ${escapeMindvexTags(file.content)}
 </mindvexAction>`,
-              )
-              .join('\n')}
+  )
+  .join('\n')}
 </mindvexArtifact>`,
           id: generateId(),
           createdAt: new Date(),
@@ -330,9 +332,7 @@ ${escapeMindvexTags(file.content)}
             <div className="p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-mindvex-elements-textPrimary">
-                    Repository URL
-                  </label>
+                  <label className="text-sm font-medium text-mindvex-elements-textPrimary">Repository URL</label>
                   <input
                     type="text"
                     placeholder="https://github.com/owner/repository"
@@ -347,6 +347,7 @@ ${escapeMindvexTags(file.content)}
                           setUrlError('Please enter a valid GitHub repository URL');
                           return;
                         }
+
                         handleClone(normalizeGitHubUrl(directUrl));
                         setDirectUrl('');
                         setUrlError(null);
@@ -356,18 +357,14 @@ ${escapeMindvexTags(file.content)}
                       'w-full px-4 py-3 rounded-lg',
                       'bg-mindvex-elements-background-depth-1',
                       'border',
-                      urlError
-                        ? 'border-red-500 dark:border-red-400'
-                        : 'border-mindvex-elements-borderColor',
+                      urlError ? 'border-red-500 dark:border-red-400' : 'border-mindvex-elements-borderColor',
                       'text-mindvex-elements-textPrimary',
                       'placeholder-mindvex-elements-textTertiary',
                       'focus:outline-none focus:ring-2 focus:ring-green-500/50',
                       'transition-all duration-200',
                     )}
                   />
-                  {urlError && (
-                    <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>
-                  )}
+                  {urlError && <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>}
                   <p className="text-xs text-mindvex-elements-textTertiary">
                     Example: https://github.com/facebook/react
                   </p>
@@ -391,10 +388,12 @@ ${escapeMindvexTags(file.content)}
                         setUrlError('Please enter a repository URL');
                         return;
                       }
+
                       if (!isValidGitHubUrl(directUrl)) {
                         setUrlError('Please enter a valid GitHub repository URL');
                         return;
                       }
+
                       handleClone(normalizeGitHubUrl(directUrl));
                       setDirectUrl('');
                       setUrlError(null);

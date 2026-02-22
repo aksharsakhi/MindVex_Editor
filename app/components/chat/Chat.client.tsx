@@ -154,10 +154,10 @@ export const ChatImpl = memo(
             ? {} // No context mode - send no files
             : chatContextMode === 'selected-files' && selectedContextFiles.length > 0
               ? Object.fromEntries(
-                selectedContextFiles
-                  .filter((filePath) => files[filePath])
-                  .map((filePath) => [filePath, files[filePath]]),
-              )
+                  selectedContextFiles
+                    .filter((filePath) => files[filePath])
+                    .map((filePath) => [filePath, files[filePath]]),
+                )
               : chatContextMode === 'active-file' && selectedFile && files[selectedFile]
                 ? { [selectedFile]: files[selectedFile] } // Active file mode - send only selected file
                 : { ...files, ...contextFiles }), // Default behavior - include all files
@@ -199,12 +199,12 @@ export const ChatImpl = memo(
 
         if (currentChat) {
           try {
-            await sendBackendMessage(
-              currentChat.id,
-              message.content,
-              'assistant',
-              { model, provider: provider.name, usage, timestamp: new Date().toISOString() }
-            );
+            await sendBackendMessage(currentChat.id, message.content, 'assistant', {
+              model,
+              provider: provider.name,
+              usage,
+              timestamp: new Date().toISOString(),
+            });
             logStore.logSystem('AI message saved to backend', { chatId: currentChat.id });
           } catch (error) {
             logStore.logError('Failed to save AI message to backend', error);
@@ -567,12 +567,11 @@ ${finalMessageContent}`;
         // Save user message to backend
         if (currentChat) {
           try {
-            await sendBackendMessage(
-              currentChat.id,
-              finalMessageContent,
-              'user',
-              { model, provider: provider.name, timestamp: new Date().toISOString() }
-            );
+            await sendBackendMessage(currentChat.id, finalMessageContent, 'user', {
+              model,
+              provider: provider.name,
+              timestamp: new Date().toISOString(),
+            });
             logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
           } catch (error) {
             logStore.logError('Failed to save user message to backend', error);
@@ -645,12 +644,11 @@ ${finalMessageContent}`;
         // Save user message to backend for ongoing chat
         if (currentChat) {
           try {
-            await sendBackendMessage(
-              currentChat.id,
-              finalMessageContent,
-              'user',
-              { model, provider: provider.name, timestamp: new Date().toISOString() }
-            );
+            await sendBackendMessage(currentChat.id, finalMessageContent, 'user', {
+              model,
+              provider: provider.name,
+              timestamp: new Date().toISOString(),
+            });
             logStore.logSystem('User message saved to backend', { chatId: currentChat.id });
           } catch (error) {
             logStore.logError('Failed to save user message to backend', error);

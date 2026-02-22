@@ -20,6 +20,7 @@ function generateStrongPassword(length: number = 16): string {
   const getSecureRandom = (max: number): number => {
     const array = new Uint32Array(1);
     crypto.getRandomValues(array);
+
     return array[0] % max;
   };
 
@@ -37,6 +38,7 @@ function generateStrongPassword(length: number = 16): string {
 
   // Shuffle the password to randomize character positions
   const shuffled = password.split('');
+
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = getSecureRandom(i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];

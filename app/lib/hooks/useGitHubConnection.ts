@@ -98,6 +98,7 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
       setIsOAuthConnection(true);
 
       console.log(`Auto-connected to GitHub as ${userData.login} via OAuth`);
+
       return true;
     } catch (error) {
       console.error('Auto-connect failed:', error);
@@ -120,11 +121,13 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
       if (connection?.token && (!connection.user || !connection.stats)) {
         await refreshConnectionData(connection);
         setIsLoading(false);
+
         return;
       }
 
       // Try to auto-connect using OAuth token from backend
       const autoConnected = await tryAutoConnect();
+
       if (autoConnected) {
         console.log('Successfully auto-connected via OAuth');
       }
@@ -325,4 +328,3 @@ export function useGitHubConnection(): UseGitHubConnectionReturn {
     tryAutoConnect,
   };
 }
-

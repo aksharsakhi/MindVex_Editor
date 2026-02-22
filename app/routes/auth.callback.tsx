@@ -4,57 +4,58 @@ import { backendApi } from '~/lib/services/backendApiService';
 import { authStore } from '~/lib/stores/authStore';
 
 export default function AuthCallback() {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        const handleCallback = async () => {
-            const token = searchParams.get('token');
-            const error = searchParams.get('error');
+  useEffect(() => {
+    const handleCallback = async () => {
+      const token = searchParams.get('token');
+      const error = searchParams.get('error');
 
-            if (error) {
-                console.error('OAuth error:', error);
-                navigate('/?error=' + encodeURIComponent(error));
-                return;
-            }
+      if (error) {
+        console.error('OAuth error:', error);
+        navigate('/?error=' + encodeURIComponent(error));
 
-            if (token) {
-                try {
-                    // Store token
-                    localStorage.setItem('auth_token', token);
+        return;
+      }
 
-                    // Fetch user data
-                    const user = await backendApi.getCurrentUser();
+      if (token) {
+        try {
+          // Store token
+          localStorage.setItem('auth_token', token);
 
-                    // Update auth store
-                    authStore.set({
-                        isAuthenticated: true,
-                        user,
-                        token,
-                        isLoading: false
-                    });
+          // Fetch user data
+          const user = await backendApi.getCurrentUser();
 
-                    // Redirect to home
-                    navigate('/');
-                } catch (err) {
-                    console.error('Failed to fetch user data:', err);
-                    localStorage.removeItem('auth_token');
-                    navigate('/?error=authentication_failed');
-                }
-            } else {
-                navigate('/?error=no_token');
-            }
-        };
+          // Update auth store
+          authStore.set({
+            isAuthenticated: true,
+            user,
+            token,
+            isLoading: false,
+          });
 
-        handleCallback();
-    }, [searchParams, navigate]);
+          // Redirect to home
+          navigate('/');
+        } catch (err) {
+          console.error('Failed to fetch user data:', err);
+          localStorage.removeItem('auth_token');
+          navigate('/?error=authentication_failed');
+        }
+      } else {
+        navigate('/?error=no_token');
+      }
+    };
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-mindvex-elements-background-depth-1">
-            <div className="text-center">
-                <div className="i-ph:spinner animate-spin text-4xl text-mindvex-elements-button-primary-background mb-4" />
-                <p className="text-mindvex-elements-textPrimary">Processing authentication...</p>
-            </div>
-        </div>
-    );
+    handleCallback();
+  }, [searchParams, navigate]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-mindvex-elements-background-depth-1">
+      <div className="text-center">
+        <div className="i-ph:spinner animate-spin text-4xl text-mindvex-elements-button-primary-background mb-4" />
+        <p className="text-mindvex-elements-textPrimary">Processing authentication...</p>
+      </div>
+    </div>
+  );
 }

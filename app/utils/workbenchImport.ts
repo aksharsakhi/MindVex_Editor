@@ -122,7 +122,7 @@ export const importFolderToWorkbench = async (files: File[], addToExisting = fal
       // Store file data for potential later retrieval
       filesData.push({
         path: relativePath,
-        content
+        content,
       });
     }
 
@@ -133,6 +133,7 @@ export const importFolderToWorkbench = async (files: File[], addToExisting = fal
     // Explicitly select the first file if available
     if (Object.keys(allFiles).length > 0) {
       const firstFilePath = Object.keys(allFiles).find((path) => allFiles[path]?.type === 'file');
+
       if (firstFilePath) {
         workbenchStore.setSelectedFile(firstFilePath);
       }
@@ -154,11 +155,10 @@ export const importFolderToWorkbench = async (files: File[], addToExisting = fal
 
     if (currentUser && !addToExisting) {
       try {
-        const workspace = await createWorkspace(
-          folderName,
-          `Imported folder: ${folderName}`,
-          { fileCount: textFiles.length, importedAt: new Date().toISOString() }
-        );
+        const workspace = await createWorkspace(folderName, `Imported folder: ${folderName}`, {
+          fileCount: textFiles.length,
+          importedAt: new Date().toISOString(),
+        });
         logStore.logSystem('Workspace created for imported folder', {
           workspaceId: workspace.id,
           folderName,
@@ -238,6 +238,7 @@ export const loadStoredGitRepoToWorkbench = async (repoName: string, addToExisti
     // Explicitly select the first file if available
     if (Object.keys(allFiles).length > 0) {
       const firstFilePath = Object.keys(allFiles).find((path) => allFiles[path]?.type === 'file');
+
       if (firstFilePath) {
         workbenchStore.setSelectedFile(firstFilePath);
       }
@@ -311,6 +312,7 @@ export const loadStoredFolderToWorkbench = async (folderName: string, addToExist
     // Explicitly select the first file if available
     if (Object.keys(allFiles).length > 0) {
       const firstFilePath = Object.keys(allFiles).find((path) => allFiles[path]?.type === 'file');
+
       if (firstFilePath) {
         workbenchStore.setSelectedFile(firstFilePath);
       }
@@ -410,6 +412,7 @@ export const importGitRepoToWorkbench = async (repoUrl: string, gitClone: any, a
     // Explicitly select the first file if available
     if (Object.keys(allFiles).length > 0) {
       const firstFilePath = Object.keys(allFiles).find((path) => allFiles[path]?.type === 'file');
+
       if (firstFilePath) {
         workbenchStore.setSelectedFile(firstFilePath);
       }

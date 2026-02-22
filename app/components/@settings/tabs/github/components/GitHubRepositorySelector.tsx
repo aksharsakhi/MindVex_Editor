@@ -21,6 +21,7 @@ type FilterOption = 'all' | 'own' | 'forks' | 'archived';
 function isValidGitHubUrl(url: string): boolean {
   const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i;
   const githubGitPattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\.git$/i;
+
   return githubUrlPattern.test(url) || githubGitPattern.test(url);
 }
 
@@ -221,8 +222,8 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
         {/* Info Message */}
         <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Tip:</strong> To browse your private repositories, log in with GitHub OAuth.
-            For public repositories, you can use the URL clone option below.
+            <strong>Tip:</strong> To browse your private repositories, log in with GitHub OAuth. For public
+            repositories, you can use the URL clone option below.
           </p>
         </div>
 
@@ -233,12 +234,8 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
               <Link2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-mindvex-elements-textPrimary">
-                Clone a Public Repository
-              </h4>
-              <p className="text-sm text-mindvex-elements-textSecondary">
-                Enter a GitHub repository URL to clone
-              </p>
+              <h4 className="text-lg font-semibold text-mindvex-elements-textPrimary">Clone a Public Repository</h4>
+              <p className="text-sm text-mindvex-elements-textSecondary">Enter a GitHub repository URL to clone</p>
             </div>
           </div>
 
@@ -261,9 +258,7 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
                   'flex-1 px-4 py-3 rounded-lg',
                   'bg-mindvex-elements-background-depth-1',
                   'border',
-                  urlError
-                    ? 'border-red-500 dark:border-red-400'
-                    : 'border-mindvex-elements-borderColor',
+                  urlError ? 'border-red-500 dark:border-red-400' : 'border-mindvex-elements-borderColor',
                   'text-mindvex-elements-textPrimary',
                   'placeholder-mindvex-elements-textTertiary',
                   'focus:outline-none focus:ring-2 focus:ring-green-500/50',
@@ -287,13 +282,9 @@ export function GitHubRepositorySelector({ onClone, className }: GitHubRepositor
               </Button>
             </div>
 
-            {urlError && (
-              <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>
-            )}
+            {urlError && <p className="text-sm text-red-500 dark:text-red-400">{urlError}</p>}
 
-            <p className="text-xs text-mindvex-elements-textTertiary">
-              Example: https://github.com/facebook/react
-            </p>
+            <p className="text-xs text-mindvex-elements-textTertiary">Example: https://github.com/facebook/react</p>
           </div>
         </div>
       </div>
