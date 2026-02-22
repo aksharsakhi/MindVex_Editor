@@ -30,7 +30,6 @@ import useViewport from '~/lib/hooks';
 import { usePreviewStore } from '~/lib/stores/previews';
 import { chatStore } from '~/lib/stores/chat';
 import type { ElementInfo } from './Inspector';
-import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
 import { useChatHistory } from '~/lib/persistence';
 import { streamingState } from '~/lib/stores/streaming';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -141,14 +140,16 @@ const fourTabSliderOptions: SliderOptions<WorkbenchViewType> = {
 
 const workbenchVariants = {
   closed: {
-    width: 0,
+    opacity: 0,
+    pointerEvents: 'none' as const,
     transition: {
-      duration: 0.2,
+      duration: 0.15,
       ease: cubicEasingFn,
     },
   },
   open: {
-    width: 'var(--workbench-width)',
+    opacity: 1,
+    pointerEvents: 'auto' as const,
     transition: {
       duration: 0.2,
       ease: cubicEasingFn,
@@ -559,19 +560,9 @@ export const Workbench = memo(
           initial="closed"
           animate={showWorkbench ? 'open' : 'closed'}
           variants={workbenchVariants}
-          className="z-workbench w-full h-full"
+          className="z-workbench absolute inset-0"
         >
-          <div
-            className={classNames(
-              'fixed top-[var(--header-height)] bottom-0 left-0 right-0 z-0 transition-[left,width,opacity] duration-200 mindvex-ease-cubic-bezier',
-              {
-                'w-full': isSmallViewport,
-                'left-0': showWorkbench && isSmallViewport,
-                'left-[var(--workbench-left)]': showWorkbench,
-                'left-[100%]': !showWorkbench,
-              },
-            )}
-          >
+          <div className="absolute inset-0">
             <div className="absolute inset-0 p-0 md:p-2">
               <div className="h-full flex flex-col bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor shadow-sm rounded-none md:rounded-lg overflow-hidden">
                 <div className="flex items-center px-3 py-2 border-b border-mindvex-elements-borderColor gap-1.5">
@@ -606,9 +597,6 @@ export const Workbench = memo(
                   <div className="ml-auto" />
                   {selectedView === 'code' && (
                     <div className="flex overflow-y-auto">
-                      {/* Export Chat Button */}
-                      <ExportChatButton exportChat={exportChat} />
-
                       {/* Sync Button */}
                       <div className="flex border border-mindvex-elements-borderColor rounded-md overflow-hidden ml-1">
                         <DropdownMenu.Root>
@@ -661,19 +649,6 @@ export const Workbench = memo(
                         >
                           <div className="i-ph:terminal" />
                           Toggle Terminal
-                        </button>
-                      </div>
-
-                      {/* Toggle Chat Button */}
-                      <div className="flex border border-mindvex-elements-borderColor rounded-md overflow-hidden ml-1">
-                        <button
-                          onClick={() => {
-                            workbenchStore.toggleRightChat(!workbenchStore.showRightChat.get());
-                          }}
-                          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-mindvex-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-mindvex-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
-                        >
-                          <div className="i-ph:chat" />
-                          Chat with Your Code
                         </button>
                       </div>
                     </div>

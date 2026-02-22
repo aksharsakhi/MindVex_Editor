@@ -1,7 +1,6 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json, type MetaFunction } from '@remix-run/cloudflare';
 import { ClientOnly } from 'remix-utils/client-only';
-import { BaseChat } from '~/components/chat/BaseChat';
 import { GitUrlImport } from '~/components/git/GitUrlImport.client';
 import { Header } from '~/components/header/Header';
 import BackgroundRays from '~/components/ui/BackgroundRays';
@@ -25,7 +24,7 @@ export default function Index() {
       <div className="flex flex-col lg:flex-row h-full">
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <ProjectAwareLayout>
-          <ClientOnly fallback={<BaseChat />}>{() => <GitUrlImport />}</ClientOnly>
+          <ClientOnly fallback={<div className="flex items-center justify-center h-full" />}>{() => <GitUrlImport />}</ClientOnly>
         </ProjectAwareLayout>
         <ClientOnly>{() => <Workbench chatStarted={true} isStreaming={false} />}</ClientOnly>
       </div>

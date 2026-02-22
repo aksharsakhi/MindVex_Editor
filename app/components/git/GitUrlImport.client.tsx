@@ -2,9 +2,6 @@ import { useSearchParams } from '@remix-run/react';
 import { generateId, type Message } from 'ai';
 import ignore from 'ignore';
 import { useEffect, useState } from 'react';
-import { ClientOnly } from 'remix-utils/client-only';
-import { BaseChat } from '~/components/chat/BaseChat';
-import { Chat } from '~/components/chat/Chat.client';
 import { useGit } from '~/lib/hooks/useGit';
 import { useChatHistory } from '~/lib/persistence';
 import { createCommandsMessage, detectProjectCommands, escapeMindvexTags } from '~/utils/projectCommands';
@@ -77,13 +74,13 @@ export function GitUrlImport() {
             content: `Cloning the repo ${repoUrl} into ${workdir}
 <mindvexArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
 ${fileContents
-  .map(
-    (file) =>
-      `<mindvexAction type="file" filePath="${file.path}">
+                .map(
+                  (file) =>
+                    `<mindvexAction type="file" filePath="${file.path}">
 ${escapeMindvexTags(file.content)}
 </mindvexAction>`,
-  )
-  .join('\n')}
+                )
+                .join('\n')}
 </mindvexArtifact>`,
             id: generateId(),
             createdAt: new Date(),
@@ -135,13 +132,8 @@ ${escapeMindvexTags(file.content)}
   }, [searchParams, historyReady, gitReady, imported]);
 
   return (
-    <ClientOnly fallback={<BaseChat inRightPanel={false} />}>
-      {() => (
-        <>
-          <Chat inRightPanel={false} />
-          {loading && <LoadingOverlay message="Please wait while we clone the repository..." />}
-        </>
-      )}
-    </ClientOnly>
+    <div className="flex flex-col items-center justify-center h-full">
+      {loading && <LoadingOverlay message="Please wait while we clone the repository..." />}
+    </div>
   );
 }

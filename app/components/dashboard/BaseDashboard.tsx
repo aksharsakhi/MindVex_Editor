@@ -175,41 +175,7 @@ export function BaseDashboard() {
           </div>
         </div>
 
-        {/* Workspace Actions */}
-        <div>
-          <h2 className="text-xl font-bold text-mindvex-elements-textPrimary mb-4 flex items-center gap-2">
-            <span className="text-2xl">⚡</span>
-            Workspace Tools
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { to: '/chat', icon: '💬', label: 'Chat with Code', desc: 'AI-powered code assistance' },
-              { to: '/editor', icon: '🔧', label: 'Go to Workspace', desc: 'Access full development environment' },
-            ].map((tool, idx) => (
-              <Link
-                key={idx}
-                to={tool.to}
-                className="group flex items-center gap-4 bg-mindvex-elements-background-depth-2 hover:bg-mindvex-elements-background-depth-3 p-5 rounded-xl border border-mindvex-elements-borderColor transition-all duration-300 hover:shadow-lg hover:border-orange-500"
-              >
-                <div className="text-3xl group-hover:scale-110 transition-transform duration-300">{tool.icon}</div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-mindvex-elements-textPrimary group-hover:text-orange-500 transition-colors">
-                    {tool.label}
-                  </h3>
-                  <p className="text-sm text-mindvex-elements-textSecondary">{tool.desc}</p>
-                </div>
-                <svg
-                  className="w-5 h-5 text-mindvex-elements-textSecondary group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
   );

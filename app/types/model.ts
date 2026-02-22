@@ -1,4 +1,10 @@
-import type { ModelInfo } from '~/lib/modules/llm/types';
+export type ModelInfo = {
+  name: string;
+  label: string;
+  provider: string;
+  maxTokenAllowed: number;
+  maxCompletionTokens?: number;
+};
 
 export type ProviderInfo = {
   staticModels: ModelInfo[];
