@@ -7,8 +7,6 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { streamingState } from '~/lib/stores/streaming';
 import { classNames } from '~/utils/classNames';
 import { useState } from 'react';
-import { NetlifyDeploymentLink } from '~/components/chat/NetlifyDeploymentLink.client';
-import { VercelDeploymentLink } from '~/components/chat/VercelDeploymentLink.client';
 import { useVercelDeploy } from '~/components/deploy/VercelDeploy.client';
 import { useNetlifyDeploy } from '~/components/deploy/NetlifyDeploy.client';
 import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
@@ -168,7 +166,6 @@ export const DeployButton = ({
               <span className="mx-auto">
                 {!netlifyConn.user ? 'No Netlify Account Connected' : 'Deploy to Netlify'}
               </span>
-              {netlifyConn.user && <NetlifyDeploymentLink />}
             </DropdownMenu.Item>
 
             <DropdownMenu.Item
@@ -190,7 +187,6 @@ export const DeployButton = ({
                 alt="vercel"
               />
               <span className="mx-auto">{!vercelConn.user ? 'No Vercel Account Connected' : 'Deploy to Vercel'}</span>
-              {vercelConn.user && <VercelDeploymentLink />}
             </DropdownMenu.Item>
 
             <DropdownMenu.Item

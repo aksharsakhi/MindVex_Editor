@@ -1,17 +1,13 @@
 import { json, type MetaFunction } from '@remix-run/cloudflare';
-import { ClientOnly } from 'remix-utils/client-only';
-import { workbenchStore } from '~/lib/stores/workbench';
 import React from 'react';
-import { BaseChat } from '~/components/chat/BaseChat';
-import { Chat } from '~/components/chat/Chat.client';
+import { workbenchStore } from '~/lib/stores/workbench';
+import { ClientOnly } from 'remix-utils/client-only';
 import { Header } from '~/components/header/Header';
 import BackgroundRays from '~/components/ui/BackgroundRays';
 import { Link } from '@remix-run/react';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { ProjectAwareLayout } from '~/components/ui/ProjectAwareLayout';
-import DirectGitCloneButton from '~/components/chat/DirectGitCloneButton';
-import { DirectImportFolderButton } from '~/components/chat/DirectImportFolderButton';
 import { useStore } from '@nanostores/react';
 import { authStore } from '~/lib/stores/authStore';
 import { AuthModal } from '~/components/auth/AuthModal';
@@ -19,7 +15,7 @@ import { WorkspaceSelector } from '~/components/workbench/WorkspaceSelector';
 import { RecentRepositories } from '~/components/home/RecentRepositories';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'MindVex' }, { name: 'description', content: 'Talk with MindVex, an AI development platform' }];
+  return [{ title: 'MindVex' }, { name: 'description', content: 'MindVex: Your comprehensive development platform' }];
 };
 
 export const loader = () => json({});
@@ -96,37 +92,6 @@ export default function Index() {
                           Your comprehensive development platform
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                          <div
-                            onClick={() => workbenchStore.toggleRightChat(true)}
-                            className="bg-mindvex-elements-background-depth-2 hover:bg-mindvex-elements-background-depth-3 p-6 rounded-lg border border-mindvex-elements-borderColor transition-theme cursor-pointer"
-                          >
-                            <div className="text-2xl mb-2">💬</div>
-                            <h3 className="text-xl font-semibold text-mindvex-elements-textPrimary mb-2">
-                              Chat with Your Code
-                            </h3>
-                            <p className="text-mindvex-elements-textSecondary">
-                              Discuss, analyze, and get help with your codebase
-                            </p>
-                          </div>
-                          <div className="bg-mindvex-elements-background-depth-2 hover:bg-mindvex-elements-background-depth-3 p-6 rounded-lg border border-mindvex-elements-borderColor transition-theme">
-                            <div className="text-2xl mb-2">📁</div>
-                            <h3 className="text-xl font-semibold text-mindvex-elements-textPrimary mb-2">
-                              Import Folder
-                            </h3>
-                            <p className="text-mindvex-elements-textSecondary mb-4">Import a folder to work with</p>
-                            <DirectImportFolderButton />
-                          </div>
-                          <div className="bg-mindvex-elements-background-depth-2 hover:bg-mindvex-elements-background-depth-3 p-6 rounded-lg border border-mindvex-elements-borderColor transition-theme">
-                            <div className="text-2xl mb-2">🐙</div>
-                            <h3 className="text-xl font-semibold text-mindvex-elements-textPrimary mb-2">
-                              Clone Repository
-                            </h3>
-                            <p className="text-mindvex-elements-textSecondary mb-4">Clone a repo from GitHub</p>
-                            <DirectGitCloneButton />
-                          </div>
-                        </div>
-
                         {/* Recent Repositories Section */}
                         <ClientOnly>
                           {() => (
@@ -134,18 +99,11 @@ export default function Index() {
                               limit={5}
                               className="mb-8"
                               onClone={(url) => {
-                                // Could trigger clone action here
                                 console.log('Clone requested for:', url);
                               }}
                             />
                           )}
                         </ClientOnly>
-
-                        <div className="flex flex-col items-center gap-4 max-w-2xl text-center mb-8">
-                          <div className="flex gap-2">
-                            <DirectImportFolderButton />
-                          </div>
-                        </div>
 
                         <Link
                           to="/editor"
