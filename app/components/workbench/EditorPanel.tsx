@@ -24,8 +24,7 @@ import { DEFAULT_TERMINAL_SIZE, TerminalTabs } from './terminal/TerminalTabs';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { Search } from './Search'; // <-- Ensure Search is imported
 import { classNames } from '~/utils/classNames'; // <-- Import classNames if not already present
-import { LockManager } from './LockManager'; // <-- Import LockManager
-import { RightChatPanel } from './RightChatPanel'; // <-- Import RightChatPanel
+import { LockManager } from './LockManager';
 
 interface EditorPanelProps {
   unsavedFiles?: Set<string>;
@@ -273,9 +272,6 @@ export const EditorPanel = memo(
                 )}
               </div>
             </Panel>
-
-            <PanelResizeHandle />
-            <RightChatPanel />
           </PanelGroup>
         </Panel>
         <PanelResizeHandle />
