@@ -1,13 +1,30 @@
 import { atom, map, type MapStore } from 'nanostores';
+import { repositoryHistoryApi, isBackendAuthenticated, type BackendRepositoryHistoryItem } from '~/lib/api/backendApi';
 
 export interface RepositoryHistoryItem {
+  /** Local client-side id */
   id: string;
+  /** Backend DB id — present when the user is authenticated and the record was synced */
+  backendId?: number;
   url: string;
   name: string;
   description: string;
   timestamp: string;
   branch?: string;
   commitHash?: string;
+}
+
+function backendItemToLocal(item: BackendRepositoryHistoryItem): RepositoryHistoryItem {
+  return {
+    id: `repo_backend_${item.id}`,
+    backendId: item.id,
+    url: item.url,
+    name: item.name,
+    description: item.description || '',
+    timestamp: item.lastAccessedAt || item.createdAt,
+    branch: item.branch,
+    commitHash: item.commitHash,
+  };
 }
 
 const MAX_LOCAL_REPOSITORIES = 50;
@@ -27,7 +44,7 @@ class RepositoryHistoryStore {
 
   /**
    * Initialize the store.
-   * Should be called when the app loads.
+   * If authenticated, fetches history from the backend and merges it with local storage.
    */
   async initialize() {
     if (this._isInitialized) {
@@ -35,6 +52,36 @@ class RepositoryHistoryStore {
     }
 
     this._isInitialized = true;
+
+    if (isBackendAuthenticated()) {
+      this._isLoading.set(true);
+
+      try {
+        const backendItems = await repositoryHistoryApi.getAll(50);
+        const currentHistory = this._repositoryHistory.get();
+        const merged: Record<string, RepositoryHistoryItem> = { ...currentHistory };
+
+        for (const item of backendItems) {
+          const local = backendItemToLocal(item);
+
+          // Remove any local entry with the same URL to avoid duplicates
+          for (const [key, val] of Object.entries(merged)) {
+            if (val.url === item.url) {
+              delete merged[key];
+            }
+          }
+
+          merged[local.id] = local;
+        }
+
+        this._repositoryHistory.set(merged);
+        this.saveToStorage();
+      } catch (error) {
+        console.error('Failed to load repository history from backend:', error);
+      } finally {
+        this._isLoading.set(false);
+      }
+    }
   }
 
   private loadFromStorage() {
@@ -84,48 +131,60 @@ class RepositoryHistoryStore {
   }
 
   async addRepository(repoUrl: string, repoName: string, description?: string, branch?: string, commitHash?: string) {
-    // Check if repository with same URL already exists
     const currentHistory = this._repositoryHistory.get();
     const existingRepo = Object.values(currentHistory).find((item) => item.url === repoUrl);
+    const updatedDescription = description || existingRepo?.description || `Repository: ${repoName}`;
+    const updatedTimestamp = new Date().toISOString();
 
+    // ── Backend sync ─────────────────────────────────────────────────────────
+    let backendId: number | undefined = existingRepo?.backendId;
+
+    if (isBackendAuthenticated()) {
+      try {
+        const backendItem = await repositoryHistoryApi.add({
+          url: repoUrl,
+          name: repoName,
+          description: updatedDescription,
+          branch,
+          commitHash,
+        });
+        backendId = backendItem.id;
+      } catch (error) {
+        console.error('Failed to sync repository add with backend:', error);
+      }
+    }
+
+    // ── Local update ──────────────────────────────────────────────────────────
     if (existingRepo) {
-      // Update timestamp of existing repository instead of creating duplicate
       const updatedItem: RepositoryHistoryItem = {
         ...existingRepo,
-        timestamp: new Date().toISOString(),
-        description: description || existingRepo.description,
+        backendId: backendId ?? existingRepo.backendId,
+        timestamp: updatedTimestamp,
+        description: updatedDescription,
         branch: branch || existingRepo.branch,
         commitHash: commitHash || existingRepo.commitHash,
       };
-
-      this._repositoryHistory.set({
-        ...currentHistory,
-        [existingRepo.id]: updatedItem,
-      });
-
+      this._repositoryHistory.set({ ...currentHistory, [existingRepo.id]: updatedItem });
       this.saveToStorage();
-
       return updatedItem;
     }
 
-    // Create new repository entry if it doesn't exist
-    const id = `repo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = backendId
+      ? `repo_backend_${backendId}`
+      : `repo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const newItem: RepositoryHistoryItem = {
       id,
+      backendId,
       url: repoUrl,
       name: repoName,
-      description: description || `Repository: ${repoName}`,
-      timestamp: new Date().toISOString(),
+      description: updatedDescription,
+      timestamp: updatedTimestamp,
       branch,
       commitHash,
     };
 
-    this._repositoryHistory.set({
-      ...currentHistory,
-      [id]: newItem,
-    });
-
-    // Enforce max limit
+    this._repositoryHistory.set({ ...currentHistory, [id]: newItem });
     this.enforceMaxLimit();
     this.saveToStorage();
 
@@ -134,6 +193,16 @@ class RepositoryHistoryStore {
 
   async removeRepository(id: string) {
     const currentHistory = this._repositoryHistory.get();
+    const item = currentHistory[id];
+
+    if (item?.backendId && isBackendAuthenticated()) {
+      try {
+        await repositoryHistoryApi.remove(item.backendId);
+      } catch (error) {
+        console.error('Failed to remove repository from backend:', error);
+      }
+    }
+
     const newHistory = { ...currentHistory };
     delete newHistory[id];
     this._repositoryHistory.set(newHistory);
@@ -141,6 +210,14 @@ class RepositoryHistoryStore {
   }
 
   async clearHistory() {
+    if (isBackendAuthenticated()) {
+      try {
+        await repositoryHistoryApi.clearAll();
+      } catch (error) {
+        console.error('Failed to clear history from backend:', error);
+      }
+    }
+
     this._repositoryHistory.set({});
     this.saveToStorage();
   }
@@ -157,27 +234,6 @@ class RepositoryHistoryStore {
 
   getRecentRepositories(limit: number = 10): RepositoryHistoryItem[] {
     return this.getAllRepositories().slice(0, limit);
-  }
-
-  async importRepositoryToWorkbench(id: string) {
-    const repo = this.getRepository(id);
-
-    if (!repo) {
-      throw new Error(`Repository with id ${id} not found`);
-    }
-
-    // Use the existing git functionality to clone the repository
-    const { useGit } = await import('~/lib/hooks/useGit');
-    const gitHook = useGit();
-
-    /*
-     * This would trigger the git clone functionality to import the repo to workbench
-     * Implementation would depend on the specific git clone implementation
-     */
-    console.log(`Importing repository ${repo.name} from ${repo.url} to workbench`);
-
-    // For now, just return the repo info
-    return repo;
   }
 }
 

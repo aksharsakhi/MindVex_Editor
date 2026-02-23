@@ -174,7 +174,6 @@ export const ControlPanel = ({ open, onClose }: ControlPanelProps) => {
       case 'notifications':
         markAllAsRead();
         break;
-
     }
 
     // Clear loading state after a delay
