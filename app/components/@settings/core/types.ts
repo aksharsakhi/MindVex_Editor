@@ -11,13 +11,7 @@ export type TabType =
   | 'data'
   | 'cloud-providers'
   | 'local-providers'
-  | 'github'
-  | 'gitlab'
-  | 'netlify'
-  | 'vercel'
-  | 'supabase'
-  | 'event-logs'
-  | 'mcp';
+  | 'event-logs';
 
 export type WindowType = 'user' | 'developer';
 
@@ -74,13 +68,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   data: 'Data Management',
   'cloud-providers': 'Cloud Providers',
   'local-providers': 'Local Providers',
-  github: 'GitHub',
-  gitlab: 'GitLab',
-  netlify: 'Netlify',
-  vercel: 'Vercel',
-  supabase: 'Supabase',
   'event-logs': 'Event Logs',
-  mcp: 'MCP Servers',
 };
 
 export const categoryLabels: Record<SettingCategory, string> = {

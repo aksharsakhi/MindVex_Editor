@@ -1,5 +1,4 @@
 import { atom, map, type MapStore } from 'nanostores';
-import { repositoryHistoryApiService, isAuthenticated } from '~/lib/services/repositoryHistoryApiService';
 
 export interface RepositoryHistoryItem {
   id: string;
@@ -27,8 +26,8 @@ class RepositoryHistoryStore {
   }
 
   /**
-   * Initialize the store and sync with backend if authenticated.
-   * Should be called when the app loads or user logs in.
+   * Initialize the store.
+   * Should be called when the app loads.
    */
   async initialize() {
     if (this._isInitialized) {
@@ -36,54 +35,6 @@ class RepositoryHistoryStore {
     }
 
     this._isInitialized = true;
-    await this.syncWithBackend();
-  }
-
-  /**
-   * Sync local history with backend.
-   * If authenticated, fetches from backend and merges with local.
-   */
-  async syncWithBackend() {
-    if (!isAuthenticated()) {
-      return;
-    }
-
-    this._isLoading.set(true);
-
-    try {
-      const backendHistory = await repositoryHistoryApiService.getHistory();
-
-      if (backendHistory.length > 0) {
-        // Replace local history with backend history
-        const historyMap: Record<string, RepositoryHistoryItem> = {};
-
-        backendHistory.forEach((item) => {
-          historyMap[item.id] = item;
-        });
-
-        this._repositoryHistory.set(historyMap);
-        this.saveToStorage();
-      } else {
-        // If backend is empty but local has data, push local to backend
-        const localItems = this.getAllRepositories();
-
-        if (localItems.length > 0) {
-          for (const item of localItems) {
-            await repositoryHistoryApiService.addRepository({
-              url: item.url,
-              name: item.name,
-              description: item.description,
-              branch: item.branch,
-              commitHash: item.commitHash,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to sync repository history with backend:', error);
-    } finally {
-      this._isLoading.set(false);
-    }
   }
 
   private loadFromStorage() {
@@ -154,19 +105,6 @@ class RepositoryHistoryStore {
 
       this.saveToStorage();
 
-      // Sync with backend if authenticated
-      if (isAuthenticated()) {
-        repositoryHistoryApiService
-          .addRepository({
-            url: repoUrl,
-            name: repoName,
-            description: description || existingRepo.description,
-            branch,
-            commitHash,
-          })
-          .catch(console.error);
-      }
-
       return updatedItem;
     }
 
@@ -191,29 +129,6 @@ class RepositoryHistoryStore {
     this.enforceMaxLimit();
     this.saveToStorage();
 
-    // Sync with backend if authenticated
-    if (isAuthenticated()) {
-      repositoryHistoryApiService
-        .addRepository({
-          url: repoUrl,
-          name: repoName,
-          description: description || `Repository: ${repoName}`,
-          branch,
-          commitHash,
-        })
-        .then((backendItem) => {
-          // Update local item with backend ID if available
-          if (backendItem) {
-            const current = this._repositoryHistory.get();
-            delete current[id];
-            current[backendItem.id] = backendItem;
-            this._repositoryHistory.set({ ...current });
-            this.saveToStorage();
-          }
-        })
-        .catch(console.error);
-    }
-
     return newItem;
   }
 
@@ -223,21 +138,11 @@ class RepositoryHistoryStore {
     delete newHistory[id];
     this._repositoryHistory.set(newHistory);
     this.saveToStorage();
-
-    // Sync with backend if authenticated
-    if (isAuthenticated()) {
-      repositoryHistoryApiService.removeRepository(id).catch(console.error);
-    }
   }
 
   async clearHistory() {
     this._repositoryHistory.set({});
     this.saveToStorage();
-
-    // Sync with backend if authenticated
-    if (isAuthenticated()) {
-      repositoryHistoryApiService.clearHistory().catch(console.error);
-    }
   }
 
   getRepository(id: string): RepositoryHistoryItem | undefined {
