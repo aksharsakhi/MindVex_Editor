@@ -20,9 +20,9 @@ export default function EditorPage() {
     <div className="flex flex-col h-full w-full bg-mindvex-elements-background-depth-1">
       <BackgroundRays />
       <Header />
-      <div className="flex flex-col lg:flex-row h-full">
+      <div className="flex flex-1 overflow-hidden">
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div className="flex-1 h-full">
+        <div className="flex-1 relative min-h-0">
           <ClientOnly fallback={<div>Loading editor...</div>}>
             {() => {
               const [showWorkbench, setShowWorkbench] = React.useState(false);

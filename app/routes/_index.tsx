@@ -39,6 +39,13 @@ export default function Index() {
               return unsubscribe;
             }, []);
 
+            // Reset workbench visibility when arriving at the home page so
+            // navigating back from /editor never leaves an empty tab bar
+            // visible over the MindVex header.
+            React.useEffect(() => {
+              workbenchStore.showWorkbench.set(false);
+            }, []);
+
             return (
               <div className="flex-1 relative min-h-0">
                 {!showWorkbench && <HomeContent />}
