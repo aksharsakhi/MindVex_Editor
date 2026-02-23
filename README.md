@@ -8,31 +8,38 @@
 ## 🚀 Features
 
 ### 📝 Intelligent Code Editor
+
 - Multi-tab interface with syntax highlighting for multiple languages
 - Real-time code editing with immediate feedback
 - File tree navigation for easy project exploration
+- File search panel for finding content across the project
 - Support for both text and binary files
 
 ### 🤖 AI-Powered Assistance
+
 - Context-aware chat interface that understands your entire codebase
 - Multiple context modes: active file, selected files, or full project
 - AI can generate, modify, and optimize code based on your requests
 - Support for multiple AI providers (OpenAI, Anthropic, Google, Ollama)
 
-### 📊 Project Analytics Dashboard
-- Dependency analysis identifying all project dependencies
-- Architecture visualization showing code layers
-- Code quality metrics with health scoring
-- Issue detection for TODOs, FIXMEs, HACKs, XXXs, and BUGs
-- File structure mapping with visual representations
+### 📊 Project Analytics Dashboard (Backend-Powered)
+
+- Git history mining with hotspot detection and commit frequency analysis
+- SCIP-based code intelligence: hover info, find-all-references
+- Evolutionary blame — who changed what, when, and how often
+- File-level trend analysis showing churn over time
+- Dependency graph construction via backend API
+- Requires `MindVex_Editor_Backend` to be running for full functionality
 
 ### 🔧 Integrated Development Tools
+
 - Full-featured terminal running directly in the browser
 - Version control integration with GitHub and GitLab
 - One-click repository creation and code pushing
 - Support for both public and private repositories
 
 ### 🎨 Modern UI
+
 - Dark theme with orange accents for comfortable coding
 - Responsive design adapting to different screen sizes
 - Intuitive menu system with quick access to all features
@@ -42,19 +49,19 @@
 
 MindVex is built with modern web technologies:
 
-- **Frontend**: React with TypeScript
+- **Frontend**: React (Remix) with TypeScript, deployed as a Cloudflare Worker
 - **Styling**: UnoCSS for atomic CSS
 - **State Management**: Nanostores for reactive state management
 - **AI Integration**: Vercel AI SDK for chat capabilities
-- **File System**: WebContainer for secure client-side operations
-- **UI Components**: Custom-built with accessibility in mind
+- **File System**: WebContainer API for secure browser-based execution
+- **Backend**: Spring Boot REST API (see `MindVex_Editor_Backend/`)
 
 ## 🌟 Key Benefits
 
-1. **Security**: All code execution happens client-side with WebContainer
-2. **Convenience**: No setup required - works directly in the browser
+1. **Security**: All code execution happens client-side via WebContainer
+2. **Convenience**: No setup required — works directly in the browser
 3. **AI Integration**: Powerful AI assistance for coding tasks
-4. **Analytics**: Deep insights into your codebase structure and quality
+4. **Analytics**: Deep insights powered by backend git-mining and SCIP analysis
 5. **Flexibility**: Multiple context modes for different development scenarios
 6. **Persistence**: Workspace state preserved across sessions
 
@@ -64,25 +71,31 @@ MindVex is built with modern web technologies:
 - **Code Review**: Use AI to analyze and improve existing code
 - **Learning**: Explore new technologies with AI-assisted explanations
 - **Collaboration**: Share project links for team development
-- **Migration**: Analyze and refactor legacy codebases
+- **Codebase Analysis**: Mine git history, understand hotspots, trace references
 
-## 📦 Installation Process
+## 📦 Installation
 
-MindVex runs entirely in the browser and requires no installation. Simply navigate to the application URL in a modern web browser. For local development:
+MindVex runs entirely in the browser and requires no installation for end users. For local development:
 
-### Using npm (may have dependency conflicts):
-1. Clone the repository: `git clone <repository-url>`
-2. Install dependencies: `npm install --legacy-peer-deps` (due to dependency conflicts)
-3. Start the development server: `npm run dev`
-4. Open your browser to the provided local URL
+### Recommended: Using pnpm
 
-### Recommended: Using pnpm (resolves dependency conflicts):
-1. Clone the repository: `git clone <repository-url>`
-2. Install dependencies: `pnpm install`
-3. Start the development server: `pnpm run dev`
-4. Open your browser to the provided local URL
+```bash
+git clone <repository-url>
+cd MindVex_Editor
+pnpm install
+pnpm run dev
+```
 
-Using pnpm is recommended as it resolves dependency conflicts that may occur with npm.
+### Using npm (may have dependency conflicts)
+
+```bash
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Then open your browser to the local URL provided by Vite.
+
+> **Note**: For backend-powered features (analytics, git mining, SCIP), also start `MindVex_Editor_Backend` — see its `README.md` for setup instructions.
 
 ## 🚀 Getting Started
 
@@ -90,53 +103,60 @@ Using pnpm is recommended as it resolves dependency conflicts that may occur wit
 2. Create a new project or import an existing folder
 3. Start coding in the multi-tab editor
 4. Use the AI chat for assistance with your code
-5. Check the dashboard for project analytics
+5. Check the dashboard for analytics (requires backend)
 6. Push your code to GitHub or GitLab when ready
 
-## 🛠️ Usage Process
+## 🛠️ Usage
 
 ### Initial Setup
-1. Upon first visit, you'll see the main menu with options to import a folder, create a new folder, or clone a repository
-2. Import your project folder by dragging and dropping it into the browser or selecting files
-3. The workbench will load with your project files in the file explorer
+
+1. Upon first visit, the main menu shows options to import a folder, create a new folder, or clone a repository
+2. Import your project folder by dragging-and-dropping or selecting files
+3. The workbench loads with your project files in the file explorer
 
 ### Working with Files
-1. Navigate through your project using the file tree on the left
-2. Click on files to open them in editor tabs
+
+1. Navigate your project using the file tree on the left
+2. Click files to open them in editor tabs
 3. Create new files using the context menu in the file explorer
-4. Edit files in the multi-tab editor with syntax highlighting
-5. Changes are saved automatically to the WebContainer file system
+4. Edit with syntax highlighting — changes are saved automatically to WebContainer
 
 ### Using AI Assistance
-1. Access the AI chat through the menu or by clicking the chat icon
-2. Select your preferred context mode (active file, selected files, or no context)
-3. Type your request in the chat input field
-4. Review AI-generated artifacts before applying them to your project
-5. Use the 'Add Context' button to include specific files in your AI conversation
 
-### Project Analytics
-1. Navigate to the dashboard to view project analytics
-2. See dependency analysis, architecture visualization, and code quality metrics
-3. Identify potential issues and areas for improvement
-4. Monitor file structure and project organization
+1. Access the AI chat through the menu or chat icon
+2. Select your preferred context mode (active file, selected files, or no context)
+3. Type your request in the chat input
+4. Review AI-generated artifacts before applying them
+5. Use "Add Context" to include specific files in the conversation
+
+### Project Analytics (requires backend)
+
+1. Navigate to the Dashboard view in the workbench
+2. Connect a repository using your GitHub OAuth credentials
+3. Trigger git-history mining via the dashboard
+4. View hotspots, file trends, blame analysis, and dependency graphs
+5. Upload SCIP data for hover-information and find-all-references
 
 ### Version Control
-1. Use the version control panel to connect with GitHub or GitLab
+
+1. Use the Git panel (via the header or workbench) to connect to GitHub or GitLab
 2. Enter your repository name and authentication token
 3. Push your entire project with a single click
-4. Manage public or private repositories directly from the editor
+4. View branch history and commit logs
 
-## 🎯 Advanced Features
+## 🎯 Key Features by View
 
-- **Context Modes**: Choose between active file, selected files, or full project context for AI interactions
-- **Artifact System**: AI-generated code changes are presented as reviewable artifacts
-- **Real-time Analysis**: Dashboard updates automatically as you modify files
-- **File Locking**: Prevent unintended modifications to critical files
-- **Multiple View Modes**: Switch between code, diff, preview, and dashboard views
+| View              | Description                                                       |
+| ----------------- | ----------------------------------------------------------------- |
+| **Code**          | Multi-tab editor with file tree, search, and file-lock management |
+| **Diff**          | Side-by-side diff viewer for comparing file changes               |
+| **Preview**       | Live in-browser preview of running web applications               |
+| **Dashboard**     | Analytics dashboard powered by backend REST API                   |
+| **Quick Actions** | Placeholder for upcoming AST-based analysis tools                 |
 
 ## 📚 Documentation
 
-For detailed information about each feature, check out our documentation in the `docs/features/` directory:
+Feature-level documentation is in `docs/features/`:
 
 - [Workspace Management](docs/features/workspace-management.md)
 - [Code Editor](docs/features/code-editor.md)
@@ -149,53 +169,36 @@ For detailed information about each feature, check out our documentation in the 
 
 For a comprehensive overview, see [MindVex Overview](docs/MindVex.md).
 
-## 🤝 Contributing
-
-We welcome contributions to MindVex! Feel free to submit issues, feature requests, or pull requests.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## ⚙️ Configuration
 
-MindVex can be configured with various AI provider keys for enhanced functionality:
+Configure AI providers via environment variables or the Settings panel:
 
 - **OpenAI API Key**: For GPT models
 - **Anthropic API Key**: For Claude models
 - **Google API Key**: For Gemini models
 - **Ollama**: For self-hosted models (local setup required)
+- **Backend URL**: Set `VITE_BACKEND_URL` to point to the Spring Boot backend
 
-Configuration is done through environment variables or the settings interface.
+## 🔒 Security
 
-## 🔒 Security Features
-
-- Client-side execution using WebContainer technology
-- No code leaves the browser during AI processing
+- Client-side execution via WebContainer — code never leaves the browser during execution
 - Secure token storage for version control integrations
 - Path validation to prevent directory traversal attacks
 - File type validation to prevent malicious uploads
 
-## 🚨 Limitations & Known Issues
+## 🚨 Known Limitations
 
-- Large projects may experience performance limitations due to browser constraints
-- Some Node.js-specific features may not be fully supported in WebContainer
+- Large projects may encounter browser memory constraints under WebContainer
+- Some Node.js-specific APIs are not available within WebContainer's sandbox
 - AI model availability depends on external service providers
-- Session data is stored locally and may be cleared by browser cleanup
+- Advanced analysis features (AST parsing, cycle detection) are under development
 
 ## 🆘 Troubleshooting
 
 - **Files not appearing**: Refresh the workspace or check file import paths
-- **AI not responding**: Verify API keys are properly configured
-- **Performance issues**: Close unnecessary tabs or reduce project size temporarily
+- **AI not responding**: Verify API keys are properly configured in Settings
+- **Dashboard empty**: Ensure the backend service is running and configured
 - **Git operations failing**: Check token permissions and repository access rights
-
-## 🔄 Updates & Maintenance
-
-MindVex automatically updates when you refresh the browser. For local development:
-- Pull the latest changes from the repository
-- Run `npm install` to update dependencies
-- Restart the development server with `npm run dev`
 
 ---
 

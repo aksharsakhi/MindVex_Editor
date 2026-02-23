@@ -5,7 +5,7 @@ import { webcontainer } from '~/lib/webcontainer';
 import { getLanguageFromExtension } from '~/utils/getLanguageFromExtension';
 import { path } from '~/utils/path';
 import { toast } from 'react-toastify';
-import { workbenchStore, quickActionsStore } from '~/lib/stores/workbench';
+import { workbenchStore } from '~/lib/stores/workbench';
 import { WORK_DIR } from '~/utils/constants';
 
 interface LanguageDistribution {
@@ -1101,22 +1101,8 @@ export function Dashboard() {
                 key={`kg-feature-${idx}`}
                 className="p-5 bg-gray-800/50 backdrop-blur-lg rounded-xl border border-gray-700 hover:border-blue-500 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
                 onClick={() => {
-                  // Switch to appropriate view based on the action
                   workbenchStore.showWorkbench.set(true);
-
-                  if (action.label === 'Architecture / Dependency Graph Visualization') {
-                    workbenchStore.currentView.set('arch-graph');
-                  } else if (action.label === 'Real-Time Graph Update (Incremental)') {
-                    workbenchStore.currentView.set('quick-actions');
-                    quickActionsStore.showKnowledgeGraphView.set(true);
-                  } else if (action.label === 'Change Impact Analysis (Using Knowledge Graph)') {
-                    workbenchStore.currentView.set('change-impact');
-                  } else if (action.label === 'Cycle Detection (Architectural Anomaly)') {
-                    workbenchStore.currentView.set('cycle-detection');
-                  } else {
-                    workbenchStore.currentView.set('quick-actions');
-                    quickActionsStore.showKnowledgeGraphView.set(true);
-                  }
+                  workbenchStore.currentView.set('quick-actions');
                 }}
               >
                 <div className="flex items-center gap-4">

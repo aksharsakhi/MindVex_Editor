@@ -34,22 +34,7 @@ export type ArtifactUpdateState = Pick<ArtifactState, 'title' | 'closed'>;
 
 type Artifacts = MapStore<Record<string, ArtifactState>>;
 
-export type WorkbenchViewType =
-  | 'code'
-  | 'diff'
-  | 'preview'
-  | 'dashboard'
-  | 'quick-actions'
-  | 'arch-graph'
-  | 'change-impact'
-  | 'cycle-detection';
-
-// Additional state for Quick Actions sub-views
-export const quickActionsStore = {
-  showKnowledgeGraphView: atom<boolean>(false),
-};
-
-export type QuickActionsViewType = 'list' | 'knowledge-graph';
+export type WorkbenchViewType = 'code' | 'diff' | 'preview' | 'dashboard' | 'quick-actions';
 
 export class WorkbenchStore {
   #previewsStore = new PreviewsStore(webcontainer);

@@ -7,50 +7,59 @@ MindVex is a modern, AI-powered code editor that runs entirely in the browser. I
 ## Core Features
 
 ### 1. Browser-Based Development Environment
+
 - Complete development environment running in the browser
 - Powered by WebContainer for secure client-side file system operations
 - No server-side code execution required
 - Full file system capabilities within the browser
 
 ### 2. Intelligent Code Editor
+
 - Multi-tab interface supporting simultaneous file editing
 - Syntax highlighting for multiple programming languages
 - Real-time code editing with immediate feedback
 - File tree navigation for easy project exploration
 
 ### 3. AI-Powered Assistance
+
 - Context-aware chat interface that understands your codebase
 - Multiple context modes: active file, selected files, or full project
 - AI can generate, modify, and optimize code based on your requests
 - Real-time code suggestions and improvements
 - Support for multiple AI providers (OpenAI, Anthropic, Google, Ollama)
 
-### 4. Project Analytics Dashboard
-- Dependency analysis identifying all project dependencies
-- Architecture visualization showing code layers
-- Code quality metrics with health scoring
-- Issue detection for TODOs, FIXMEs, HACKs, XXXs, and BUGs
-- File structure mapping with visual representations
+### 4. Project Analytics Dashboard (Backend-Powered)
+
+- Git history mining to identify the most-changed files (hotspot analysis)
+- File-level change trend charts over time
+- Evolutionary blame — who changed what, when, and how often
+- SCIP-based code intelligence: hover info and find-all-references
+- Dependency graph construction and query
+- Requires `MindVex_Editor_Backend` to be running
 
 ### 5. Version Control Integration
+
 - Direct integration with GitHub and GitLab
 - One-click repository creation and code pushing
 - Support for both public and private repositories
 - Branch management and custom commit messages
 
 ### 6. Integrated Terminal
+
 - Full-featured terminal running directly in the browser
 - Execute any command that works in a local terminal
 - Proper directory awareness within your project
 - Command history and output display
 
 ### 7. Advanced File Management
+
 - Create, edit, delete files and folders
 - Import entire project folders via drag-and-drop
 - Persistent workspace storage using localStorage
 - Support for both text and binary files
 
 ### 8. Customizable UI
+
 - Dark theme with orange accents for comfortable coding
 - Responsive design adapting to different screen sizes
 - Intuitive menu system with quick access to all features
@@ -60,12 +69,12 @@ MindVex is a modern, AI-powered code editor that runs entirely in the browser. I
 
 MindVex is built with modern web technologies:
 
-- **Frontend**: React with TypeScript
+- **Frontend**: React (Remix) with TypeScript, deployed as Cloudflare Worker
 - **Styling**: UnoCSS for atomic CSS
 - **State Management**: Nanostores for reactive state management
 - **AI Integration**: Vercel AI SDK for chat capabilities
-- **File System**: WebContainer for secure client-side operations
-- **UI Components**: Custom-built with accessibility in mind
+- **File System**: WebContainer API for secure browser-based execution
+- **Backend**: Spring Boot REST API (see `MindVex_Editor_Backend/`)
 
 ## Key Benefits
 

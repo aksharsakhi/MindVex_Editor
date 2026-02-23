@@ -1,117 +1,67 @@
-# Dashboard Analytics
+﻿# Dashboard Analytics
 
 ## Overview
-The dashboard provides comprehensive analytics and insights about your codebase, including dependency analysis, architecture visualization, and code quality metrics.
+
+The Dashboard provides backend-powered analytics and insights about your codebase. It integrates with the `MindVex_Editor_Backend` REST API to mine git history, analyze code hotspots, visualize file trends, and surface blame annotations.
+
+> **Requires backend**: All analytics features require the `MindVex_Editor_Backend` service to be running and a repository to be connected.
 
 ## Features
-- **Dependency Analysis**: Automatically identifies project dependencies from package.json and import statements
-- **Architecture Visualization**: Displays architecture layers based on directory structure
-- **Code Quality Metrics**: Provides health scoring and identifies potential issues
-- **File Structure Mapping**: Visualizes the project structure in multiple grid layouts
-- **Issue Detection**: Finds TODOs, FIXMEs, HACKs, XXXs, and BUGs in the code
-- **Real-time Analysis**: Updates automatically as files change in the workspace
+
+- **Git History Mining**: Clone a remote repository and extract its full commit history via `POST /api/analytics/mine`
+- **Hotspot Analysis**: Identify the most frequently modified files over the project lifetime via `GET /api/analytics/hotspots`
+- **File Trend Analysis**: See how often a specific file changes over time via `GET /api/analytics/file-trend`
+- **Evolutionary Blame**: Understand who changed a file, when, and how much via `GET /api/analytics/blame`
+- **Dependency Graph**: Build and query the file-level dependency graph via `POST /api/graph/build` and `GET /api/graph/dependencies`
+- **SCIP Code Intelligence**: Upload SCIP index files for hover information and find-all-references (`POST /api/scip/upload`, `GET /api/scip/hover`)
 
 ## Key Components
-- BaseDashboard: Main dashboard interface component
-- DependencyAnalyzer: Parses package.json and identifies imports
-- ArchitectureDetector: Analyzes directory structure to identify layers
-- QualityMetrics: Implements health scoring algorithms
-- FileStructureMapper: Creates visualizations of the file structure
+
+- `Dashboard.client.tsx` — Full client-side dashboard that fetches data from the backend REST API
+- `BaseDashboard.tsx` — SSR-safe fallback skeleton (no data) for initial page render
+- `analyticsClient.ts` — Frontend API client for `POST /api/analytics/mine`, `GET /api/analytics/hotspots`, etc.
+- `graphClient.ts` — Frontend API client for graph build and dependency/reference queries
+- `scipClient.ts` — Frontend API client for SCIP upload, hover, and job status
 
 ## Usage
-1. Access the dashboard from the main menu
-2. View dependency analysis showing all project dependencies
-3. Explore architecture layers detected in your project
-4. Review code quality metrics and health scores
-5. Identify potential issues marked in the code
-6. Monitor file structure through visual mapping
+
+1. Navigate to the **Dashboard** view in the workbench (or go to `/dashboard`)
+2. Connect your repository using GitHub OAuth (via the backend)
+3. Click **Mine Git History** to trigger `POST /api/analytics/mine` — this clones the repo and processes all commits
+4. View **Hotspot Analysis** to see which files change most frequently
+5. Click on a file to view its **File Trend** chart
+6. Use **Evolutionary Blame** to see per-file authorship and change frequency
+7. Use the **Graph** section to build and explore the dependency graph
+8. Upload a SCIP index file for advanced hover and reference features
+
+## Backend API Integration
+
+| Frontend Action | Backend Endpoint | Description |
+|---|---|---|
+| Mine history | `POST /api/analytics/mine` | Clones repo, processes git log |
+| View hotspots | `GET /api/analytics/hotspots` | Top N most-changed files |
+| File trend chart | `GET /api/analytics/file-trend?file=...` | Commit count per time period |
+| Blame view | `GET /api/analytics/blame?file=...` | Authorship breakdown |
+| Build graph | `POST /api/graph/build` | Dependency graph construction |
+| Get dependencies | `GET /api/graph/dependencies` | Files and their imports |
+| Find references | `GET /api/graph/references?symbol=...` | All usages of a symbol |
+| Upload SCIP | `POST /api/scip/upload` | Ingest a SCIP index |
+| Hover info | `GET /api/scip/hover?...` | Symbol hover data |
 
 ## Technical Details
-- Analyzes package.json files to identify project dependencies
-- Uses import statement parsing to identify cross-file dependencies
-- Implements sophisticated algorithms for architecture layer detection
-- Provides health scoring based on code complexity and maintainability factors
-- Updates analysis in real-time as files are modified in the workspace
 
-## Algorithms Used
+- The frontend uses Nanostores (`workbenchStore`) to track the active workbench view
+- All HTTP calls to the backend include a JWT token in the `Authorization: Bearer` header
+- Git repository cloning happens server-side; the browser only receives analysed results
+- Dashboard transitions between views (Code / Diff / Preview / Dashboard / Quick Actions) use the `WorkbenchViewType` union type
 
-### Dependency Analysis Algorithm
-- **Purpose**: Automatically identifies project dependencies from package.json and import statements
-- **Algorithm Type**: Recursive file parsing and dependency resolution
-- **Time Complexity**: O(n*m) where n is the number of files and m is the average file size
-- **Implementation**: 
-  1. Parses package.json to identify declared dependencies
-  2. Recursively scans all source files for import/export statements
-  3. Maps import paths to actual file locations
-  4. Builds dependency graph showing relationships between modules
+## Quick Actions
 
-### Architecture Visualization Algorithm
-- **Purpose**: Displays architecture layers based on directory structure
-- **Algorithm Type**: Directory structure analysis and clustering
-- **Time Complexity**: O(d) where d is the number of directories
-- **Implementation**: 
-  1. Analyzes directory hierarchy and naming patterns
-  2. Groups related directories into architectural layers (e.g., components, services, utils)
-  3. Applies heuristics to identify common architectural patterns
-  4. Generates visual representation of the architectural layers
+The **Quick Actions** view (`/workbench  Quick Actions`) is a placeholder for upcoming analysis tools:
 
-### Code Quality Metrics Algorithm
-- **Purpose**: Provides health scoring and identifies potential issues
-- **Algorithm Type**: Multi-factor scoring with weighted metrics
-- **Time Complexity**: O(f*c) where f is the number of files and c is the average complexity per file
-- **Implementation**: 
-  1. Calculates cyclomatic complexity for each function/module
-  2. Analyzes code duplication across the project
-  3. Evaluates maintainability index based on code structure
-  4. Aggregates scores into overall health metrics with weighting factors
-
-### File Structure Mapping Algorithm
-- **Purpose**: Visualizes the project structure in multiple grid layouts
-- **Algorithm Type**: Hierarchical tree visualization with layout optimization
-- **Time Complexity**: O(n) where n is the number of files and directories
-- **Implementation**: 
-  1. Builds hierarchical tree representation of the file system
-  2. Applies layout algorithms to optimize visual presentation
-  3. Generates multiple view options (grid, tree, graph layouts)
-  4. Calculates spatial positioning for clear visualization
-
-### Issue Detection Algorithm
-- **Purpose**: Finds TODOs, FIXMEs, HACKs, XXXs, and BUGs in the code
-- **Algorithm Type**: Pattern matching with regular expressions
-- **Time Complexity**: O(l) where l is the total number of lines in the project
-- **Implementation**: 
-  1. Scans all code files for predefined comment patterns
-  2. Uses regular expressions to identify issue markers
-  3. Extracts context around each issue marker
-  4. Categorizes and summarizes identified issues
-
-### Real-time Analysis Algorithm
-- **Purpose**: Updates automatically as files change in the workspace
-- **Algorithm Type**: Event-driven incremental analysis
-- **Time Complexity**: O(Δf) where Δf is the number of changed files
-- **Implementation**: 
-  1. Monitors file system events for changes
-  2. Applies differential analysis to only re-analyze changed components
-  3. Updates affected metrics incrementally
-  4. Propagates changes through dependency graph to affected components
-
-### Cycle Detection Algorithm
-- **Purpose**: Identifies cyclic dependencies in the codebase
-- **Algorithm Type**: DFS-based cycle detection for directed graphs
-- **Time Complexity**: O(V + E) where V is the number of vertices (nodes) and E is the number of edges
-- **Implementation**: Uses recursion stack tracking to detect back edges indicating cycles
-- **Process**: 
-  1. Builds an adjacency list representation of the knowledge graph
-  2. Performs DFS traversal for each unvisited node
-  3. Tracks nodes in the current recursion stack
-  4. Identifies cycles when a back edge is found to a node in the recursion stack
-  5. Extracts the cycle path using parent tracking
-
-### Graph Traversal Algorithms
-- **BFS for Impact Analysis**: Used to find nodes that are indirectly impacted by following dependencies
-- **DFS for Structure Analysis**: Used to traverse the code structure for architecture detection
-
-### Knowledge Graph Construction
-- **AST Parsing**: Abstract Syntax Tree parsing for multiple languages to extract code elements
-- **Graph Building**: Constructs nodes for modules, classes, functions, and variables
-- **Relationship Mapping**: Identifies import, call, inheritance, and dependency relationships
+| Tool | Status |
+|---|---|
+| Multi-Language AST Parsing | Coming soon |
+| Real-Time Graph Update (Incremental) | Coming soon |
+| Change Impact Analysis | Coming soon |
+| Cycle Detection (Architectural Anomaly) | Coming soon |

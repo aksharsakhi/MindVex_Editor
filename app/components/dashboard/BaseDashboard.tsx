@@ -144,8 +144,8 @@ export function BaseDashboard() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { to: '/architecture', icon: '🏗️', label: 'Architecture Diagram', desc: 'Visualize system structure' },
-              { to: '/knowledge-graph', icon: '🕸️', label: 'Knowledge Graph', desc: 'Explore code relationships' },
+              { to: '/git', icon: '🔀', label: 'Git History', desc: 'View commits & branch history' },
+              { to: '/dashboard', icon: '📊', label: 'Analytics', desc: 'Explore analytics & hotspots' },
               { to: '/editor', icon: '💻', label: 'Code Editor', desc: 'Edit and manage files' },
             ].map((action, idx) => (
               <Link
@@ -174,8 +174,6 @@ export function BaseDashboard() {
             ))}
           </div>
         </div>
-
-
       </div>
     </div>
   );
