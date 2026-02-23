@@ -1073,62 +1073,6 @@ export class WorkbenchStore {
         return repoUrl;
       }
 
-      if (isGitLab) {
-        const { GitLabApiService: gitLabApiServiceClass } = await import('~/lib/services/gitlabApiService');
-        const gitLabApiService = new gitLabApiServiceClass(authToken, 'https://gitlab.com');
-
-        // Check or create repo
-        let repo = await gitLabApiService.getProject(owner, repoName);
-
-        if (!repo) {
-          repo = await gitLabApiService.createProject(repoName, isPrivate);
-          await new Promise((r) => setTimeout(r, 2000)); // Wait for repo initialization
-        }
-
-        // Check if branch exists, create if not
-        const branchRes = await gitLabApiService.getFile(repo.id, 'README.md', branchName).catch(() => null);
-
-        if (!branchRes || !branchRes.ok) {
-          // Create branch from default
-          await gitLabApiService.createBranch(repo.id, branchName, repo.default_branch);
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-
-        const actions = Object.entries(files).reduce(
-          (acc, [filePath, dirent]) => {
-            if (dirent?.type === 'file' && dirent.content) {
-              acc.push({
-                action: 'create',
-                file_path: extractRelativePath(filePath),
-                content: dirent.content,
-              });
-            }
-
-            return acc;
-          },
-          [] as { action: 'create' | 'update'; file_path: string; content: string }[],
-        );
-
-        // Check which files exist and update action accordingly
-        for (const action of actions) {
-          const fileCheck = await gitLabApiService.getFile(repo.id, action.file_path, branchName);
-
-          if (fileCheck.ok) {
-            action.action = 'update';
-          }
-        }
-
-        // Commit all files
-        await gitLabApiService.commitFiles(repo.id, {
-          branch: branchName,
-          commit_message: commitMessage || 'Commit multiple files',
-          actions,
-        });
-
-        return repo.web_url;
-      }
-
-      // Should not reach here since we only handle GitHub and GitLab
       throw new Error(`Unsupported provider: ${provider}`);
     } catch (error) {
       console.error('Error pushing to repository:', error);

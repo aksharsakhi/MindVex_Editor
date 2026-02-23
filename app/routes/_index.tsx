@@ -7,9 +7,6 @@ import BackgroundRays from '~/components/ui/BackgroundRays';
 import { Link } from '@remix-run/react';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { Workbench } from '~/components/workbench/Workbench.client';
-import { useStore } from '@nanostores/react';
-import { authStore } from '~/lib/stores/authStore';
-import { AuthModal } from '~/components/auth/AuthModal';
 import { RecentRepositories } from '~/components/home/RecentRepositories';
 
 export const meta: MetaFunction = () => {
@@ -25,18 +22,6 @@ export const loader = () => json({});
  * to keep the UI clean and consistent with the design system.
  */
 export default function Index() {
-  const [showAuthModal, setShowAuthModal] = React.useState(false);
-  const auth = useStore(authStore);
-
-  React.useEffect(() => {
-    // Show auth modal if not authenticated after a short delay
-    const timer = setTimeout(() => {
-      if (!auth.isAuthenticated && !auth.isLoading) {
-        setShowAuthModal(true);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [auth.isAuthenticated, auth.isLoading]);
 
   return (
     <div className="flex flex-col h-full w-full bg-mindvex-elements-background-depth-1">
@@ -102,11 +87,5 @@ export default function Index() {
           }}
         </ClientOnly>
       </div>
-
-      {/* Auth Modal */}
-      {showAuthModal && !auth.isAuthenticated && (
-        <AuthModal onClose={() => setShowAuthModal(false)} allowClose={auth.isAuthenticated} />
-      )}
-    </div>
   );
 }

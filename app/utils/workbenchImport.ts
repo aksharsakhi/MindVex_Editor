@@ -5,8 +5,6 @@ import { MAX_FILES, isBinaryFile, shouldIncludeFile } from '~/utils/fileUtils';
 import { logStore } from '~/lib/stores/logs';
 import { WORK_DIR } from '~/utils/constants';
 import { path } from '~/utils/path';
-import { createWorkspace, currentWorkspaceStore } from '~/lib/stores/workspaceStore';
-import { getCurrentUser } from '~/lib/stores/authStore';
 
 /**
  * Import a folder directly into the workbench store
@@ -148,28 +146,6 @@ export const importFolderToWorkbench = async (files: File[], addToExisting = fal
         timestamp: new Date().toISOString(),
       };
       localStorage.setItem(folderStorageKey, JSON.stringify(folderData));
-    }
-
-    // Create workspace in backend if user is authenticated
-    const currentUser = getCurrentUser();
-
-    if (currentUser && !addToExisting) {
-      try {
-        const workspace = await createWorkspace(folderName, `Imported folder: ${folderName}`, {
-          fileCount: textFiles.length,
-          importedAt: new Date().toISOString(),
-        });
-        logStore.logSystem('Workspace created for imported folder', {
-          workspaceId: workspace.id,
-          folderName,
-          fileCount: textFiles.length,
-        });
-      } catch (error) {
-        logStore.logError('Failed to create workspace for imported folder', error, { folderName });
-
-        // Don't fail the import if workspace creation fails
-        console.error('Workspace creation failed, but folder import succeeded:', error);
-      }
     }
 
     logStore.logSystem('Folder imported to workbench successfully', {
