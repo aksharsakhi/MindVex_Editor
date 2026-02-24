@@ -29,7 +29,7 @@ function StatusDashboard({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      {healthStatuses.length === 0 ? (
+      {Object.keys(healthStatuses).length === 0 ? (
         <Card className="bg-mindvex-elements-background-depth-2">
           <CardContent className="p-8 text-center">
             <Cable className="w-16 h-16 mx-auto text-mindvex-elements-textTertiary mb-4" />
@@ -41,35 +41,32 @@ function StatusDashboard({ onBack }: { onBack: () => void }) {
         </Card>
       ) : (
         <div className="space-y-4">
-          {healthStatuses.map((status) => (
-            <Card key={`${status.provider}-${status.baseUrl}`} className="bg-mindvex-elements-background-depth-2">
+          {Object.entries(healthStatuses).map(([key, status]) => (
+            <Card key={key} className="bg-mindvex-elements-background-depth-2">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-mindvex-elements-background-depth-3 flex items-center justify-center">
-                      {React.createElement(PROVIDER_ICONS[status.provider as keyof typeof PROVIDER_ICONS] || Server, {
-                        className: 'w-5 h-5 text-mindvex-elements-textPrimary',
-                      })}
+                      <Server className="w-5 h-5 text-mindvex-elements-textPrimary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-mindvex-elements-textPrimary">{status.provider}</h3>
-                      <p className="text-xs text-mindvex-elements-textSecondary font-mono">{status.baseUrl}</p>
+                      <h3 className="font-semibold text-mindvex-elements-textPrimary">{key}</h3>
+                      <p className="text-xs text-mindvex-elements-textSecondary font-mono">
+                        {status.isHealthy ? 'Healthy' : 'Unhealthy'}
+                      </p>
                     </div>
                   </div>
-                  <HealthStatusBadge status={status.status} responseTime={status.responseTime} />
+                  <HealthStatusBadge
+                    status={status.isHealthy ? 'healthy' : 'unhealthy'}
+                    responseTime={status.latency ?? undefined}
+                  />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="text-center">
-                    <div className="text-mindvex-elements-textSecondary">Models</div>
+                    <div className="text-mindvex-elements-textSecondary">Latency</div>
                     <div className="text-lg font-semibold text-mindvex-elements-textPrimary">
-                      {status.availableModels?.length || 0}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-mindvex-elements-textSecondary">Version</div>
-                    <div className="text-lg font-semibold text-mindvex-elements-textPrimary">
-                      {status.version || 'Unknown'}
+                      {status.latency ? `${status.latency}ms` : 'N/A'}
                     </div>
                   </div>
                   <div className="text-center">

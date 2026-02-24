@@ -74,13 +74,13 @@ export function GitUrlImport() {
             content: `Cloning the repo ${repoUrl} into ${workdir}
 <mindvexArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
 ${fileContents
-                .map(
-                  (file) =>
-                    `<mindvexAction type="file" filePath="${file.path}">
+  .map(
+    (file) =>
+      `<mindvexAction type="file" filePath="${file.path}">
 ${escapeMindvexTags(file.content)}
 </mindvexAction>`,
-                )
-                .join('\n')}
+  )
+  .join('\n')}
 </mindvexArtifact>`,
             id: generateId(),
             createdAt: new Date(),

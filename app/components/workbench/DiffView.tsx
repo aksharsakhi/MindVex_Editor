@@ -422,12 +422,26 @@ const CodeLine = memo(
 
     const renderContent = () => {
       if (type === 'unchanged' || !block.charChanges) {
-        const highlightedCode = highlighter
-          ? highlighter
+        let highlightedCode = content;
+
+        if (highlighter) {
+          try {
+            highlightedCode = highlighter
               .codeToHtml(content, { lang: language, theme: theme === 'dark' ? 'github-dark' : 'github-light' })
               .replace(/<\/?pre[^>]*>/g, '')
-              .replace(/<\/?code[^>]*>/g, '')
-          : content;
+              .replace(/<\/?code[^>]*>/g, '');
+          } catch {
+            try {
+              highlightedCode = highlighter
+                .codeToHtml(content, { lang: 'plaintext', theme: theme === 'dark' ? 'github-dark' : 'github-light' })
+                .replace(/<\/?pre[^>]*>/g, '')
+                .replace(/<\/?code[^>]*>/g, '');
+            } catch {
+              highlightedCode = content;
+            }
+          }
+        }
+
         return <span dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
       }
 
@@ -436,15 +450,31 @@ const CodeLine = memo(
           {block.charChanges.map((change, index) => {
             const changeClass = changeColorStyles[change.type];
 
-            const highlightedCode = highlighter
-              ? highlighter
+            let highlightedCode = change.value;
+
+            if (highlighter) {
+              try {
+                highlightedCode = highlighter
                   .codeToHtml(change.value, {
                     lang: language,
                     theme: theme === 'dark' ? 'github-dark' : 'github-light',
                   })
                   .replace(/<\/?pre[^>]*>/g, '')
-                  .replace(/<\/?code[^>]*>/g, '')
-              : change.value;
+                  .replace(/<\/?code[^>]*>/g, '');
+              } catch {
+                try {
+                  highlightedCode = highlighter
+                    .codeToHtml(change.value, {
+                      lang: 'plaintext',
+                      theme: theme === 'dark' ? 'github-dark' : 'github-light',
+                    })
+                    .replace(/<\/?pre[^>]*>/g, '')
+                    .replace(/<\/?code[^>]*>/g, '');
+                } catch {
+                  highlightedCode = change.value;
+                }
+              }
+            }
 
             return <span key={index} className={changeClass} dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
           })}
@@ -573,7 +603,27 @@ const getSharedHighlighter = async () => {
       'go',
       'ruby',
       'rust',
+      'markdown',
+      'yaml',
+      'bash',
+      'sh',
+      'sql',
+      'vue',
+      'svelte',
+      'xml',
       'plaintext',
+      'dockerfile',
+      'toml',
+      'ini',
+      'makefile',
+      'scss',
+      'less',
+      'graphql',
+      'swift',
+      'kotlin',
+      'dart',
+      'lua',
+      'powershell',
     ],
   });
 

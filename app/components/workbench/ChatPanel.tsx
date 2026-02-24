@@ -1,0 +1,184 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
+import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  model?: string;
+}
+
+/**
+ * ChatPanel — Gemini AI-powered chatbot embedded in the code editor sidebar.
+ * Uses the /api/mcp/tools/chat endpoint for conversational AI with codebase context.
+ * Falls back to wiki/module tools for specific commands.
+ */
+export function ChatPanel() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [repoUrl, setRepoUrl] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const recent = repositoryHistoryStore.getRecentRepositories(1);
+
+    if (recent.length > 0) {
+      setRepoUrl(recent[0].url);
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || !repoUrl) {
+      return;
+    }
+
+    const userMsg: ChatMessage = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const query = input.toLowerCase();
+
+      if (query.includes('wiki') || query.startsWith('generate wiki')) {
+        // Wiki generation via dedicated endpoint
+        const wiki = await mcpGetWiki(repoUrl);
+        setMessages((prev) => [...prev, { role: 'assistant', content: wiki.content }]);
+      } else if (query.startsWith('describe module')) {
+        // Module description via dedicated endpoint
+        const moduleName = input.replace(/describe\s+module\s*/i, '').trim();
+        const desc = await mcpDescribeModule(repoUrl, moduleName);
+        setMessages((prev) => [...prev, { role: 'assistant', content: desc.description }]);
+      } else {
+        // AI chat via Gemini — primary mode
+        const history: ChatHistoryItem[] = messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        const response = await mcpChat(repoUrl, input, history);
+        setMessages((prev) => [...prev, { role: 'assistant', content: response.reply, model: response.model }]);
+      }
+    } catch (err: any) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: `⚠️ ${err.message}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-mindvex-elements-background-depth-1 border-l border-mindvex-elements-borderColor">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-mindvex-elements-borderColor bg-mindvex-elements-background-depth-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">✨</span>
+          <span className="text-xs font-semibold text-mindvex-elements-textPrimary tracking-wide uppercase">
+            MindVex AI
+          </span>
+        </div>
+        <span className="text-[9px] text-mindvex-elements-textTertiary bg-mindvex-elements-background-depth-3 px-1.5 py-0.5 rounded-full">
+          Gemini 2.0
+        </span>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 modern-scrollbar">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center px-2">
+            <div className="text-3xl mb-3">🧠</div>
+            <p className="text-xs text-mindvex-elements-textSecondary font-medium mb-1">MindVex AI Assistant</p>
+            <p className="text-[10px] text-mindvex-elements-textTertiary mb-4">Ask anything about your codebase</p>
+            <div className="space-y-1.5 w-full">
+              {[
+                'Explain the project architecture',
+                'How does authentication work?',
+                'What are the main modules?',
+                'Find potential bugs in the code',
+              ].map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInput(q)}
+                  className="w-full text-left text-xs px-3 py-2 rounded-lg bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor hover:border-orange-500/30 text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
+                  ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
+                  : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
+                }`}
+            >
+              <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+              {msg.model && msg.role === 'assistant' && (
+                <div className="mt-1.5 text-[9px] text-mindvex-elements-textTertiary opacity-60">⚡ {msg.model}</div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor rounded-lg px-3 py-2 text-xs text-mindvex-elements-textTertiary">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce [animation-delay:300ms]" />
+                </div>
+                Thinking...
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="p-2 border-t border-mindvex-elements-borderColor flex-shrink-0">
+        {messages.length > 0 && (
+          <button
+            onClick={() => setMessages([])}
+            className="w-full text-[10px] text-mindvex-elements-textTertiary hover:text-orange-400 mb-1.5 transition-colors"
+          >
+            Clear chat
+          </button>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about your code..."
+            className="flex-1 bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor rounded-lg px-3 py-2 text-xs text-mindvex-elements-textPrimary placeholder-mindvex-elements-textTertiary focus:outline-none focus:border-orange-500/50"
+          />
+          <button
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+            className="px-3 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-medium hover:from-orange-600 hover:to-red-600 disabled:opacity-40 transition-all flex-shrink-0"
+          >
+            ↑
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

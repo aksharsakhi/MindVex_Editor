@@ -35,17 +35,57 @@ export function clearAuth() {
 
 export function initAuth() {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth_token');
-    const userStr = localStorage.getItem('user');
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
 
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        authStore.set({ user, token, isAuthenticated: true, isLoading: false });
-      } catch (error) {
-        console.error('Failed to parse user from localStorage:', error);
-        clearAuth();
-      }
+    if (urlToken) {
+      localStorage.setItem('auth_token', urlToken);
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+      fetch(`${API_BASE_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${urlToken}` },
+      })
+        .then((res) => res.json() as Promise<User>)
+        .then((user) => {
+          setAuth(urlToken, user);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch user', err);
+          clearAuth();
+        });
+
+      return;
+    }
+
+    const token = localStorage.getItem('auth_token');
+
+    if (token) {
+      // Always validate the stored token against the backend
+      const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+      fetch(`${API_BASE_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => {
+          if (!res.ok) {
+            // Token is invalid/expired — clear stale auth and force re-login
+            console.warn('Stored token is invalid, clearing auth');
+            clearAuth();
+
+            return null;
+          }
+
+          return res.json();
+        })
+        .then((user) => {
+          if (user) {
+            setAuth(token, user as User);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to validate token', err);
+          clearAuth();
+        });
     } else {
       authStore.set({ user: null, token: null, isAuthenticated: false, isLoading: false });
     }

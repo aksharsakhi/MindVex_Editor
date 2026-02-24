@@ -22,9 +22,10 @@ import { FileBreadcrumb } from './FileBreadcrumb';
 import { FileTree } from './FileTree';
 import { DEFAULT_TERMINAL_SIZE, TerminalTabs } from './terminal/TerminalTabs';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { Search } from './Search'; // <-- Ensure Search is imported
-import { classNames } from '~/utils/classNames'; // <-- Import classNames if not already present
+import { Search } from './Search';
+import { classNames } from '~/utils/classNames';
 import { LockManager } from './LockManager';
+import { ChatPanel } from './ChatPanel';
 
 interface EditorPanelProps {
   unsavedFiles?: Set<string>;
@@ -61,6 +62,7 @@ export const EditorPanel = memo(
     const theme = useStore(themeStore);
     const showTerminal = useStore(workbenchStore.showTerminal);
     const files = useStore(workbenchStore.files);
+    const [showChat, setShowChat] = useState(false);
 
     const activeFileSegments = useMemo(() => {
       if (!editorDocument) {
@@ -250,20 +252,44 @@ export const EditorPanel = memo(
                             Restore
                           </div>
                         </button>
+                        <button
+                          onClick={() => setShowChat((prev) => !prev)}
+                          className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                            showChat
+                              ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                              : 'bg-mindvex-elements-background-depth-3 text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary'
+                          }`}
+                          title="Toggle AI Chat"
+                        >
+                          <div className="flex items-center gap-1">
+                            <div className="i-ph:chat-circle-dots" />
+                            Chat
+                          </div>
+                        </button>
                       </div>
                     </div>
-                    <div className="h-full flex-1 overflow-hidden modern-scrollbar">
-                      <CodeMirrorEditor
-                        theme={theme}
-                        editable={!isStreaming}
-                        settings={editorSettings}
-                        doc={editorDocument}
-                        autoFocusOnDocumentChange={!isMobile()}
-                        onScroll={onEditorScroll}
-                        onChange={onEditorChange}
-                        onSave={onFileSave}
-                      />
-                    </div>
+                    <PanelGroup direction="horizontal">
+                      <Panel className="h-full overflow-hidden modern-scrollbar" minSize={30}>
+                        <CodeMirrorEditor
+                          theme={theme}
+                          editable={!isStreaming}
+                          settings={editorSettings}
+                          doc={editorDocument}
+                          autoFocusOnDocumentChange={!isMobile()}
+                          onScroll={onEditorScroll}
+                          onChange={onEditorChange}
+                          onSave={onFileSave}
+                        />
+                      </Panel>
+                      {showChat && (
+                        <>
+                          <PanelResizeHandle className="w-1 hover:bg-orange-500/30 transition-colors" />
+                          <Panel defaultSize={30} minSize={20} maxSize={50}>
+                            <ChatPanel />
+                          </Panel>
+                        </>
+                      )}
+                    </PanelGroup>
                   </>
                 ) : (
                   <div className="h-full flex items-center justify-center text-mindvex-elements-textSecondary">

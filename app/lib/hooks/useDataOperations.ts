@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import type { IDBDatabase } from 'fake-indexeddb';
 import { getAllChats } from '~/lib/persistence/chats';
+
+type IDBDatabase = globalThis.IDBDatabase;
 
 interface UseDataOperationsOptions {
   customDb?: IDBDatabase;
@@ -37,6 +38,7 @@ function downloadJson(data: unknown, filename: string) {
 function readJsonFile(file: File): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onload = (e) => {
       try {
         resolve(JSON.parse(e.target?.result as string));
@@ -68,6 +70,7 @@ export function useDataOperations({
       const settings: Record<string, unknown> = {};
       SETTINGS_KEYS.forEach((key) => {
         const val = localStorage.getItem(key);
+
         if (val) {
           try {
             settings[key] = JSON.parse(val);
@@ -86,36 +89,35 @@ export function useDataOperations({
     }
   }, []);
 
-  const handleExportSelectedSettings = useCallback(
-    async (selectedIds: string[]) => {
-      setIsExporting(true);
+  const handleExportSelectedSettings = useCallback(async (selectedIds: string[]) => {
+    setIsExporting(true);
 
-      try {
-        const settings: Record<string, unknown> = {};
-        selectedIds.forEach((id) => {
-          const key = SETTINGS_KEYS.find((k) => k.toLowerCase().includes(id));
-          if (key) {
-            const val = localStorage.getItem(key);
-            if (val) {
-              try {
-                settings[key] = JSON.parse(val);
-              } catch {
-                settings[key] = val;
-              }
+    try {
+      const settings: Record<string, unknown> = {};
+      selectedIds.forEach((id) => {
+        const key = SETTINGS_KEYS.find((k) => k.toLowerCase().includes(id));
+
+        if (key) {
+          const val = localStorage.getItem(key);
+
+          if (val) {
+            try {
+              settings[key] = JSON.parse(val);
+            } catch {
+              settings[key] = val;
             }
           }
-        });
+        }
+      });
 
-        downloadJson({ version: 1, timestamp: new Date().toISOString(), settings }, 'mindvex-settings-partial.json');
-        toast.success('Selected settings exported');
-      } catch {
-        toast.error('Failed to export selected settings');
-      } finally {
-        setIsExporting(false);
-      }
-    },
-    [],
-  );
+      downloadJson({ version: 1, timestamp: new Date().toISOString(), settings }, 'mindvex-settings-partial.json');
+      toast.success('Selected settings exported');
+    } catch {
+      toast.error('Failed to export selected settings');
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
 
   const handleExportAllChats = useCallback(async () => {
     if (!customDb) {
@@ -148,7 +150,10 @@ export function useDataOperations({
       try {
         const allChats = await getAllChats(customDb as unknown as IDBDatabase);
         const selected = allChats.filter((c) => selectedIds.includes(c.id));
-        downloadJson({ version: 1, timestamp: new Date().toISOString(), chats: selected }, 'mindvex-chats-selected.json');
+        downloadJson(
+          { version: 1, timestamp: new Date().toISOString(), chats: selected },
+          'mindvex-chats-selected.json',
+        );
         toast.success('Selected chats exported');
       } catch {
         toast.error('Failed to export selected chats');
@@ -188,8 +193,10 @@ export function useDataOperations({
 
   const handleImportChats = useCallback(
     async (_file: File) => {
-      // Chat import via IndexedDB requires more complex handling;
-      // for now show a message that it's not yet supported
+      /*
+       * Chat import via IndexedDB requires more complex handling;
+       * for now show a message that it's not yet supported
+       */
       toast.info('Chat import is not supported in this version');
       onReloadChats?.();
     },

@@ -11,7 +11,7 @@ function getAuthHeaders(): Record<string, string> {
   const base: Record<string, string> = { 'Content-Type': 'application/json' };
 
   if (token) {
-    base['Authorization'] = `Bearer ${token}`;
+    base.Authorization = `Bearer ${token}`;
   }
 
   return base;

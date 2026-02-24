@@ -1,0 +1,81 @@
+import React, { useState } from 'react';
+import { Dialog, DialogRoot } from '~/components/ui/Dialog';
+import { GitHubButton } from './GitHubButton';
+import { classNames } from '~/utils/classNames';
+
+interface LoginModalProps {
+  isOpen: boolean;
+  onClose?: () => void;
+}
+
+export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  return (
+    <DialogRoot open={isOpen} onOpenChange={onClose}>
+      <Dialog
+        showCloseButton={false}
+        className="w-full max-w-[400px] bg-[#1a1a1a] border-[#2a2a2a] !rounded-xl !p-0 overflow-hidden shadow-2xl"
+      >
+        <div className="flex flex-col items-center text-center w-full px-8 py-10">
+          <h2 className="text-[26px] font-bold text-white mb-2 tracking-tight">Welcome Back</h2>
+          <p className="text-[13px] text-gray-400 mb-8 font-medium">Sign in to continue to MindVex</p>
+
+          {/* GitHub Button Container */}
+          <div className="w-full mb-8">
+            <GitHubButton />
+          </div>
+
+          <div className="w-full flex items-center justify-center gap-4 mb-8">
+            <div className="h-px bg-[#2a2a2a] flex-1" />
+            <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Or continue with email</span>
+            <div className="h-px bg-[#2a2a2a] flex-1" />
+          </div>
+
+          <form className="w-full flex flex-col gap-4 text-left" onSubmit={(e) => e.preventDefault()}>
+            <div className="flex flex-col gap-2">
+              <label className="text-[11px] font-bold text-gray-300 tracking-wide">Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors placeholder:text-gray-600"
+                disabled
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 relative">
+              <label className="text-[11px] font-bold text-gray-300 tracking-wide">Password</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors placeholder:text-gray-600 pr-10"
+                  disabled
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-[3px] bg-gray-300 pointer-events-none"></div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled
+              className="w-full py-3 mt-4 rounded-lg font-semibold text-sm transition-colors text-orange-500 bg-[#1c140a] border border-orange-500/20 hover:bg-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <p className="mt-8 text-[13px] text-gray-400 font-medium">
+            Don't have an account?{' '}
+            <span className="text-orange-500 hover:text-orange-400 cursor-pointer transition-colors ml-1">Sign up</span>
+          </p>
+        </div>
+      </Dialog>
+    </DialogRoot>
+  );
+}

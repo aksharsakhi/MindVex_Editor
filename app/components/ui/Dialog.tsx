@@ -124,7 +124,7 @@ export const Dialog = memo(({ children, className, showCloseButton = true, onClo
           exit="closed"
           variants={dialogVariants}
         >
-          <div className="flex flex-col">
+          <div className="flex flex-col h-full overflow-hidden">
             {children}
             {showCloseButton && (
               <RadixDialog.Close asChild onClick={onClose}>

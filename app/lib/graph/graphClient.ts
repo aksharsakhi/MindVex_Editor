@@ -54,6 +54,10 @@ function authHeaders(): HeadersInit {
 async function request<T>(path: string, method = 'GET'): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, { method, headers: authHeaders() });
 
+  if (res.status === 401) {
+    throw new Error('Unauthorized: Please log in using GitHub first.');
+  }
+
   if (!res.ok) {
     throw new Error(`GraphAPI ${res.status}: ${path}`);
   }

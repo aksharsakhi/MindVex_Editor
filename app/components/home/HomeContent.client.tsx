@@ -21,7 +21,10 @@ import { repositoryHistoryStore, type RepositoryHistoryItem } from '~/lib/stores
 import { importFilesToWorkbench } from '~/utils/directFileImport';
 import { importGitRepoToWorkbench } from '~/utils/workbenchImport';
 import { workbenchStore } from '~/lib/stores/workbench';
+import { refreshGraph } from '~/lib/stores/graphCacheStore';
 import { classNames } from '~/utils/classNames';
+import { ImportRepoModal } from './ImportRepoModal';
+import { MyGitHubReposModal } from './MyGitHubReposModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,10 +40,21 @@ function extractRepoName(url: string): string {
 function formatTimeAgo(timestamp: string): string {
   const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
 
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) {
+    return 'Just now';
+  }
+
+  if (diff < 3600) {
+    return `${Math.floor(diff / 60)}m ago`;
+  }
+
+  if (diff < 86400) {
+    return `${Math.floor(diff / 3600)}h ago`;
+  }
+
+  if (diff < 604800) {
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
 
   return new Date(timestamp).toLocaleDateString();
 }
@@ -132,6 +146,8 @@ export function HomeContent() {
   const [isFolderImporting, setIsFolderImporting] = useState(false);
   const [openingRepoId, setOpeningRepoId] = useState<string | null>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,10 +180,15 @@ export function HomeContent() {
       const name = extractRepoName(url);
       await importGitRepoToWorkbench(url, gitClone);
       await repositoryHistoryStore.addRepository(url, name);
+
+      // Pre-compute the knowledge graph in the background
+      refreshGraph(url);
+
       setGithubUrl('');
       toast.success(`Cloned "${name}" successfully`);
     } catch (error) {
       console.error('Clone failed:', error);
+
       // importGitRepoToWorkbench already shows a toast on failure
     } finally {
       setIsCloning(false);
@@ -213,6 +234,10 @@ export function HomeContent() {
     try {
       await importGitRepoToWorkbench(repo.url, gitClone);
       await repositoryHistoryStore.addRepository(repo.url, repo.name, repo.description, repo.branch, repo.commitHash);
+
+      // Pre-compute the knowledge graph in the background
+      refreshGraph(repo.url);
+
       toast.success(`Opened "${repo.name}"`);
     } catch (error) {
       console.error('Failed to open repo:', error);
@@ -265,194 +290,178 @@ export function HomeContent() {
           </p>
         </div>
 
-        {/* ── Top row: GitHub (left) + Folder (right) ───────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {/* ── Clone from GitHub ── */}
-          <div
+        {/* ── Top row: 3 Cards Grid ───────────────────────── */}
+        <div className="grid grid-cols-2 gap-4 mb-10">
+          {/* Card 1: Chat with Your Code */}
+          <button
+            onClick={() => (window.location.href = '/editor')}
             className={classNames(
-              'relative flex flex-col rounded-2xl overflow-hidden',
-              'border border-white/[0.08] bg-gradient-to-br from-[#0f1629] to-[#0a0d1a]',
-              'shadow-[0_0_0_1px_rgba(99,102,241,0.15),0_8px_32px_rgba(0,0,0,0.4)]',
-              'hover:shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_12px_40px_rgba(99,102,241,0.12)]',
-              'transition-all duration-300 p-6',
+              'relative flex flex-col items-center justify-center text-center rounded-2xl overflow-hidden',
+              'border border-white/[0.08] bg-[#1a1a1a]',
+              'hover:bg-[#222222] transition-colors p-8 min-h-[160px]',
             )}
           >
-            {/* accent glow top-left */}
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative">
-              {/* Header */}
-              <div className="flex items-start gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <Github className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-mindvex-elements-textPrimary leading-tight">
-                    Clone from GitHub
-                  </h3>
-                  <p className="text-xs text-mindvex-elements-textTertiary mt-0.5">
-                    Paste any public or private Git URL
-                  </p>
-                </div>
-              </div>
-
-              {/* Input */}
-              <div className="relative mb-3">
-                <input
-                  type="text"
-                  value={githubUrl}
-                  onChange={(e) => setGithubUrl(e.target.value)}
-                  onKeyDown={handleCloneKeyDown}
-                  placeholder="https://github.com/owner/repo"
-                  disabled={isCloning}
-                  className={classNames(
-                    'w-full px-3 py-2.5 text-xs rounded-xl pr-10',
-                    'bg-white/[0.04] border border-white/[0.08]',
-                    'text-mindvex-elements-textPrimary placeholder:text-mindvex-elements-textTertiary',
-                    'focus:outline-none focus:border-blue-500/40 focus:bg-white/[0.06]',
-                    'disabled:opacity-50 transition-all duration-200',
-                  )}
-                />
-              </div>
-
-              {/* Clone button */}
-              <button
-                onClick={handleClone}
-                disabled={isCloning || !githubUrl.trim()}
-                className={classNames(
-                  'w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold',
-                  'bg-gradient-to-r from-blue-600 to-blue-500',
-                  'hover:from-blue-500 hover:to-blue-400',
-                  'text-white shadow-[0_2px_12px_rgba(59,130,246,0.3)]',
-                  'hover:shadow-[0_4px_20px_rgba(59,130,246,0.45)]',
-                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none',
-                  'transition-all duration-200',
-                )}
+            <div className="w-8 h-8 mb-3 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-gray-300"
               >
-                {isCloning ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Cloning…
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Clone Repository
-                  </>
-                )}
-              </button>
-
-              {!gitReady && (
-                <p className="text-[10px] text-yellow-400/70 mt-2 flex items-center gap-1">
-                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                  Git engine warming up…
-                </p>
-              )}
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
             </div>
-          </div>
+            <h3 className="text-base font-bold text-white mb-2">Chat with Your Code</h3>
+            <p className="text-[13px] text-gray-400 max-w-[220px]">Discuss, analyze, and get help with your codebase</p>
+          </button>
 
-          {/* ── Import Local Folder ── */}
+          {/* Card 2: Import Folder */}
           <div
             className={classNames(
-              'relative flex flex-col rounded-2xl overflow-hidden',
-              'border border-white/[0.08] bg-gradient-to-br from-[#160f0a] to-[#0d0a05]',
-              'shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_8px_32px_rgba(0,0,0,0.4)]',
-              'hover:shadow-[0_0_0_1px_rgba(245,158,11,0.25),0_12px_40px_rgba(245,158,11,0.10)]',
-              'transition-all duration-300 p-6',
+              'relative flex flex-col items-center justify-center text-center rounded-2xl overflow-hidden',
+              'border border-white/[0.08] bg-[#1a1a1a]',
+              'p-8 min-h-[160px]',
             )}
           >
-            {/* accent glow top-right */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-
             <input
               ref={folderInputRef}
               type="file"
               className="hidden"
+
               // @ts-ignore
               webkitdirectory=""
               directory=""
               multiple
               onChange={handleFolderChange}
             />
-
-            <div className="relative flex-1 flex flex-col">
-              {/* Header */}
-              <div className="flex items-start gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                  <FolderOpen className="w-5 h-5 text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-mindvex-elements-textPrimary leading-tight">
-                    Import Local Folder
-                  </h3>
-                  <p className="text-xs text-mindvex-elements-textTertiary mt-0.5">Open a project from your machine</p>
-                </div>
-              </div>
-
-              {/* Drop zone / button */}
-              <button
-                onClick={() => folderInputRef.current?.click()}
-                disabled={isFolderImporting}
-                className={classNames(
-                  'flex-1 flex flex-col items-center justify-center gap-3 rounded-xl',
-                  'border border-dashed border-amber-500/20',
-                  'bg-amber-500/[0.04] hover:bg-amber-500/[0.08]',
-                  'hover:border-amber-500/40',
-                  'text-mindvex-elements-textSecondary',
-                  'disabled:opacity-40 disabled:cursor-not-allowed',
-                  'transition-all duration-200 py-6 cursor-pointer',
-                )}
-              >
-                {isFolderImporting ? (
-                  <>
-                    <Loader2 className="w-7 h-7 animate-spin text-amber-400" />
-                    <span className="text-xs text-amber-400 font-medium">Importing files…</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                      <FolderOpen className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-amber-400">Click to Browse</p>
-                      <p className="text-[10px] text-mindvex-elements-textTertiary mt-0.5">or drag a folder here</p>
-                    </div>
-                  </>
-                )}
-              </button>
+            <div className="w-8 h-8 mb-3 flex items-center justify-center">
+              <FolderOpen className="w-7 h-7 text-amber-500" />
             </div>
+            <h3 className="text-base font-bold text-white mb-2">Import Folder</h3>
+            <p className="text-[13px] text-gray-400 max-w-[220px] mb-4">Import a folder to work with</p>
+            <button
+              onClick={() => folderInputRef.current?.click()}
+              disabled={isFolderImporting}
+              className="px-4 py-2 rounded-md bg-[#252525] hover:bg-[#333333] border border-white/10 text-xs font-semibold text-white flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              {isFolderImporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              )}
+              Import Folder
+            </button>
+          </div>
+
+          {/* Card 3: Clone Repository */}
+          <div
+            className={classNames(
+              'relative flex flex-col items-center justify-center text-center rounded-2xl overflow-hidden',
+              'border border-white/[0.08] bg-[#1a1a1a]',
+              'p-8 min-h-[160px]',
+            )}
+          >
+            <div className="w-8 h-8 mb-3 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="url(#gradient-alien)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <defs>
+                  <linearGradient id="gradient-alien" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f472b6" />
+                    <stop offset="100%" stopColor="#fb923c" />
+                  </linearGradient>
+                </defs>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                <line x1="9" y1="9" x2="9.01" y2="9" />
+                <line x1="15" y1="9" x2="15.01" y2="9" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">Clone Repository</h3>
+            <p className="text-[13px] text-gray-400 max-w-[220px] mb-4">Clone a repo from GitHub</p>
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2 rounded-md bg-[#252525] hover:bg-[#333333] border border-white/10 text-xs font-semibold text-white flex items-center gap-2 transition-colors"
+            >
+              Clone a repo
+              <Github className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* ── Open Code Editor (full-width banner) ──────────────────────────── */}
-        <Link
-          to="/editor"
-          className={classNames(
-            'relative group flex items-center justify-between gap-4 rounded-2xl overflow-hidden',
-            'border border-white/[0.08] bg-gradient-to-r from-[#110e1f] via-[#0d0b1a] to-[#0f0c1d]',
-            'shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_4px_24px_rgba(0,0,0,0.35)]',
-            'hover:shadow-[0_0_0_1px_rgba(168,85,247,0.28),0_8px_32px_rgba(168,85,247,0.12)]',
-            'transition-all duration-300 px-6 py-5 mb-10',
-          )}
-        >
-          {/* Glow */}
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-purple-600/10 to-transparent pointer-events-none" />
+        <ImportRepoModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onSelectUrl={() => {
+            setIsImportModalOpen(false);
 
-          <div className="relative flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <Code2 className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-mindvex-elements-textPrimary">Open Code Editor</h3>
-              <p className="text-xs text-mindvex-elements-textTertiary">Start with a blank workspace</p>
-            </div>
-          </div>
+            const url = prompt('Enter a public GitHub repository URL');
 
-          <div className="relative flex items-center gap-2 text-xs text-purple-400 font-medium group-hover:gap-3 transition-all duration-200">
-            Launch editor
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </Link>
+            if (url) {
+              setGithubUrl(url);
+
+              // Small timeout to allow state to settle before cloning
+              setTimeout(() => {
+                const btn = document.getElementById('hidden-clone-btn');
+
+                if (btn) {
+                  btn.click();
+                }
+              }, 100);
+            }
+          }}
+          onSelectGithub={() => {
+            setIsImportModalOpen(false);
+            setIsGitHubModalOpen(true);
+          }}
+        />
+
+        <MyGitHubReposModal
+          isOpen={isGitHubModalOpen}
+          onClose={() => setIsGitHubModalOpen(false)}
+          onClone={(url) => {
+            setIsGitHubModalOpen(false);
+            setGithubUrl(url);
+            setTimeout(() => {
+              const btn = document.getElementById('hidden-clone-btn');
+
+              if (btn) {
+                btn.click();
+              }
+            }, 100);
+          }}
+        />
+
+        {/* Hidden button to trigger the original clone logic */}
+        <button id="hidden-clone-btn" className="hidden" onClick={handleClone}></button>
 
         {/* ── Recent Repositories ────────────────────────────────────────────── */}
         {(isHistoryLoading || allRepos.length > 0) && (

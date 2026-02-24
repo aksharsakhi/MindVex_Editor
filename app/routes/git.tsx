@@ -24,7 +24,9 @@ export default function Index() {
       <div className="flex flex-col lg:flex-row h-full">
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <ProjectAwareLayout>
-          <ClientOnly fallback={<div className="flex items-center justify-center h-full" />}>{() => <GitUrlImport />}</ClientOnly>
+          <ClientOnly fallback={<div className="flex items-center justify-center h-full" />}>
+            {() => <GitUrlImport />}
+          </ClientOnly>
         </ProjectAwareLayout>
         <ClientOnly>{() => <Workbench chatStarted={true} isStreaming={false} />}</ClientOnly>
       </div>

@@ -4,6 +4,7 @@ import { repositoryHistoryApi, isBackendAuthenticated, type BackendRepositoryHis
 export interface RepositoryHistoryItem {
   /** Local client-side id */
   id: string;
+
   /** Backend DB id — present when the user is authenticated and the record was synced */
   backendId?: number;
   url: string;
@@ -166,6 +167,7 @@ class RepositoryHistoryStore {
       };
       this._repositoryHistory.set({ ...currentHistory, [existingRepo.id]: updatedItem });
       this.saveToStorage();
+
       return updatedItem;
     }
 
