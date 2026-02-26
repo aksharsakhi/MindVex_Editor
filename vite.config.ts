@@ -33,7 +33,7 @@ export default defineConfig((config) => {
         globals: {
           Buffer: true,
           process: true,
-          global: true,
+          global: false,
         },
         protocolImports: true,
         exclude: ['child_process', 'fs', 'path'],
