@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Dialog, DialogRoot } from '~/components/ui/Dialog';
 import { GitHubButton } from './GitHubButton';
 import { classNames } from '~/utils/classNames';
+import { setAuth } from '~/lib/stores/authStore';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,6 +13,40 @@ interface LoginModalProps {
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canSubmit = email.trim().length > 3 && password.trim().length >= 6 && (isSignUp ? fullName.trim().length > 0 : true);
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const path = isSignUp ? '/auth/register' : '/auth/login';
+      const body = isSignUp ? { email, password, fullName } : { email, password };
+      const res = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Request failed');
+      }
+      const data = (await res.json()) as { token?: string; user?: any };
+      if (data?.token && data?.user) {
+        setAuth(data.token, data.user);
+        onClose?.();
+      } else {
+        throw new Error('Invalid response');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <DialogRoot open={isOpen} onOpenChange={onClose}>
@@ -42,9 +78,21 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors placeholder:text-gray-600"
-                disabled
               />
             </div>
+
+            {isSignUp && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-bold text-gray-300 tracking-wide">Full name</label>
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors placeholder:text-gray-600"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 relative">
               <label className="text-[11px] font-bold text-gray-300 tracking-wide">Password</label>
@@ -55,7 +103,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors placeholder:text-gray-600 pr-10"
-                  disabled
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-[3px] bg-gray-300 pointer-events-none"></div>
               </div>
@@ -63,16 +110,43 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
             <button
               type="button"
-              disabled
+              disabled={!canSubmit || isSubmitting}
+              onClick={handleSubmit}
               className="w-full py-3 mt-4 rounded-lg font-semibold text-sm transition-colors text-orange-500 bg-[#1c140a] border border-orange-500/20 hover:bg-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(249,115,22,0.1)]"
             >
-              Sign In
+              {isSignUp ? (isSubmitting ? 'Creating account...' : 'Sign Up') : (isSubmitting ? 'Signing in...' : 'Sign In')}
             </button>
+            {error && <div className="text-red-400 text-xs mt-2">{error}</div>}
           </form>
 
           <p className="mt-8 text-[13px] text-gray-400 font-medium">
-            Don't have an account?{' '}
-            <span className="text-orange-500 hover:text-orange-400 cursor-pointer transition-colors ml-1">Sign up</span>
+            {isSignUp ? (
+              <>
+                Already have an account?
+                <span
+                  className="text-orange-500 hover:text-orange-400 cursor-pointer transition-colors ml-1"
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError(null);
+                  }}
+                >
+                  Sign in
+                </span>
+              </>
+            ) : (
+              <>
+                Don't have an account?
+                <span
+                  className="text-orange-500 hover:text-orange-400 cursor-pointer transition-colors ml-1"
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError(null);
+                  }}
+                >
+                  Sign up
+                </span>
+              </>
+            )}
           </p>
         </div>
       </Dialog>

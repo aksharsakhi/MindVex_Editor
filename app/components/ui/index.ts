@@ -7,6 +7,7 @@ export * from './Card';
 export * from './Checkbox';
 export * from './Collapsible';
 export * from './Dialog';
+export * from './Dropdown';
 export * from './IconButton';
 export * from './Input';
 export * from './Label';

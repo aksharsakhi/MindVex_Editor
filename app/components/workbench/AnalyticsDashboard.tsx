@@ -1,4 +1,12 @@
+/**
+ * AnalyticsDashboard.tsx
+ *
+ * Enhanced Code Analytics & Hotspots tool with unified parser support
+ * and parser-only vs LLM-enhanced modes.
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
+import { useStore } from '@nanostores/react';
 import {
   getHotspots,
   getFileTrend,
@@ -7,6 +15,18 @@ import {
   type WeeklyChurn,
 } from '~/lib/analytics/analyticsClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
+import { 
+  getUnifiedParser, 
+  parseModeStore, 
+  ParseModeSelector, 
+  ParseModeStatus,
+  type LLMAnalysis 
+} from '~/lib/unifiedParser';
+import { Button } from '~/components/ui/Button';
+import { Card } from '~/components/ui/Card';
+import { Badge } from '~/components/ui/Badge';
+import { Brain, Zap, Info, RefreshCw, Download, Flame, TrendingUp, BarChart2 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 // ─── Inline SVG Chart Components ─────────────────────────────────────────────
 
@@ -103,6 +123,10 @@ export function AnalyticsDashboard() {
   const [miningLoading, setMiningLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
+  
+  const parseMode = useStore(parseModeStore);
+  const [llmAnalysis, setLlmAnalysis] = useState<LLMAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     const recent = repositoryHistoryStore.getRecentRepositories(1);
@@ -142,8 +166,44 @@ export function AnalyticsDashboard() {
     try {
       const trend = await getFileTrend(repoUrl, filePath, 12);
       setFileTrend(trend);
+      
+      // Perform AI analysis if in LLM mode
+      if (parseMode.type === 'llm-enhanced') {
+        performAIAnalysis(filePath, trend);
+      } else {
+        setLlmAnalysis(null);
+      }
     } catch {
       setFileTrend([]);
+      setLlmAnalysis(null);
+    }
+  };
+
+  const performAIAnalysis = async (filePath: string, trend: WeeklyChurn[]) => {
+    setIsAnalyzing(true);
+    
+    try {
+      const unifiedParser = await getUnifiedParser();
+      
+      const fileContent = `// Hotspot Analysis for ${filePath}
+// Churn Rate: ${trend.length > 0 ? (trend.reduce((s, t) => s + t.churnRate, 0) / trend.length).toFixed(1) : 0}%
+// Total Commits: ${trend.reduce((s, t) => s + t.commitCount, 0)}
+
+/**
+ * This file is identified as a hotspot with high code churn.
+ * Frequent changes may indicate architectural issues or high complexity.
+ */
+class HotspotAnalysis {
+  // Analyzed for ${filePath}
+}`;
+
+      const analysis = await unifiedParser.parseCode(fileContent, filePath);
+      setLlmAnalysis(analysis.llmAnalysis || null);
+      toast.success('AI hotspot analysis completed');
+    } catch (error) {
+      console.error('AI hotspot analysis failed:', error);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -174,39 +234,63 @@ export function AnalyticsDashboard() {
       {/* Header */}
       <div className="p-6 pb-0">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
-            📊 Code Analytics
-          </h1>
-          <button
-            onClick={handleTriggerMining}
-            disabled={miningLoading || !repoUrl}
-            className="px-4 py-2 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-400 text-sm font-medium hover:bg-orange-500/25 transition-colors disabled:opacity-50"
-          >
-            {miningLoading ? '⏳ Mining...' : '🔄 Mine Git History'}
-          </button>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+              📊 Code Analytics
+            </h1>
+            <ParseModeStatus />
+          </div>
+          <div className="flex items-center gap-2">
+            <ParseModeSelector compact />
+            <Button
+              onClick={handleTriggerMining}
+              disabled={miningLoading || !repoUrl}
+              variant="outline"
+              size="sm"
+              className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+            >
+              {miningLoading ? (
+                <>
+                  <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                  Mining...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Mine Git History
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         <p className="text-gray-400 text-sm mb-6">Hotspot detection and code churn analysis powered by JGit mining.</p>
       </div>
 
       {/* Stats Row */}
-      <div className="px-6 grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-          <div className="text-xs text-gray-500 mb-1">Hotspot Files</div>
+      <div className="px-6 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="bg-[#111] border-white/5 p-4">
+          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+            <Flame className="h-3 w-3 text-red-400" /> Hotspot Files
+          </div>
           <div className="text-2xl font-bold text-red-400">{hotspots.length}</div>
-        </div>
-        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-          <div className="text-xs text-gray-500 mb-1">Avg Churn Rate</div>
+        </Card>
+        <Card className="bg-[#111] border-white/5 p-4">
+          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+            <TrendingUp className="h-3 w-3 text-orange-400" /> Avg Churn Rate
+          </div>
           <div className="text-2xl font-bold text-orange-400">
             {hotspots.length > 0
               ? (hotspots.reduce((s, h) => s + h.avgChurnRate, 0) / hotspots.length).toFixed(1)
               : '0'}
             %
           </div>
-        </div>
-        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-          <div className="text-xs text-gray-500 mb-1">Total Commits</div>
+        </Card>
+        <Card className="bg-[#111] border-white/5 p-4">
+          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+            <BarChart2 className="h-3 w-3 text-blue-400" /> Total Commits
+          </div>
           <div className="text-2xl font-bold text-blue-400">{hotspots.reduce((s, h) => s + h.totalCommits, 0)}</div>
-        </div>
+        </Card>
       </div>
 
       {error && (
@@ -225,7 +309,7 @@ export function AnalyticsDashboard() {
 
           {loading ? (
             <div className="flex items-center justify-center h-48 text-gray-500">
-              <div className="animate-spin mr-2">⏳</div> Loading hotspots...
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading hotspots...
             </div>
           ) : hotspots.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-gray-500">
@@ -233,7 +317,7 @@ export function AnalyticsDashboard() {
               <p className="text-sm">No hotspots found. Click "Mine Git History" to analyze commits.</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
               {hotspots.map((h, i) => {
                 const intensity = h.avgChurnRate / maxChurn;
                 const bgColor = `rgba(239, 68, 68, ${intensity * 0.25})`;
@@ -277,7 +361,7 @@ export function AnalyticsDashboard() {
         </div>
 
         {/* File Trend Detail */}
-        <div className="bg-[#111] border border-white/5 rounded-xl p-5">
+        <div className="bg-[#111] border border-white/5 rounded-xl p-5 flex flex-col">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             📈 Churn Trend
             {selectedFile && (
@@ -288,36 +372,93 @@ export function AnalyticsDashboard() {
           </h2>
 
           {!selectedFile ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center flex-1 text-gray-500">
               <div className="text-4xl mb-3">👈</div>
               <p className="text-sm">Select a hotspot file to view its trend</p>
             </div>
           ) : fileTrend.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-gray-500">Loading trend data...</div>
+            <div className="flex items-center justify-center flex-1 text-gray-500">
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading trend data...
+            </div>
           ) : (
-            <div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
               <ChurnLineChart data={fileTrend} />
+              
               {/* Summary stats */}
-              <div className="grid grid-cols-3 gap-3 mt-4">
-                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+              <div className="grid grid-cols-3 gap-3 mt-4 mb-6">
+                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center border border-white/5">
                   <div className="text-xs text-gray-500">Peak Churn</div>
                   <div className="text-lg font-bold text-red-400">
                     {Math.max(...fileTrend.map((d) => d.churnRate)).toFixed(1)}%
                   </div>
                 </div>
-                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center border border-white/5">
                   <div className="text-xs text-gray-500">Total Lines Δ</div>
                   <div className="text-lg font-bold text-blue-400">
                     {fileTrend.reduce((s, d) => s + d.linesAdded + d.linesDeleted, 0)}
                   </div>
                 </div>
-                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <div className="bg-[#0a0a0a] rounded-lg p-3 text-center border border-white/5">
                   <div className="text-xs text-gray-500">Commits</div>
                   <div className="text-lg font-bold text-green-400">
                     {fileTrend.reduce((s, d) => s + d.commitCount, 0)}
                   </div>
                 </div>
               </div>
+
+              {/* AI Analysis section */}
+              {parseMode.type === 'llm-enhanced' && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
+                    <Brain className="h-4 w-4" /> AI Hotspot Analysis
+                  </h3>
+                  
+                  {isAnalyzing ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 italic">
+                      <RefreshCw className="h-3 w-3 animate-spin" /> Analyzing hotspot patterns...
+                    </div>
+                  ) : llmAnalysis ? (
+                    <div className="space-y-4">
+                      <div className="text-sm text-gray-300 leading-relaxed bg-blue-500/5 p-3 rounded-lg border border-blue-500/10">
+                        {llmAnalysis.summary}
+                      </div>
+                      
+                      {llmAnalysis.recommendations.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Recommendations</h4>
+                          <ul className="space-y-1">
+                            {llmAnalysis.recommendations.map((rec, idx) => (
+                              <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
+                                <div className="mt-1.5 w-1 h-1 rounded-full bg-orange-400 flex-shrink-0" />
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-2 bg-gray-800/50 rounded border border-white/5">
+                          <div className="text-[10px] text-gray-500 uppercase">Risk Level</div>
+                          <div className={`text-sm font-bold ${llmAnalysis.quality.score < 50 ? 'text-red-400' : 'text-orange-400'}`}>
+                            {llmAnalysis.quality.score < 50 ? 'High' : 'Moderate'}
+                          </div>
+                        </div>
+                        <div className="p-2 bg-gray-800/50 rounded border border-white/5">
+                          <div className="text-[10px] text-gray-500 uppercase">Complexity</div>
+                          <div className="text-sm font-bold text-blue-400">
+                            {llmAnalysis.complexity.score.toFixed(1)}/100
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      Select a file to generate AI analysis of this hotspot.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

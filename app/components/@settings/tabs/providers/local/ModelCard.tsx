@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '~/components/ui/Card';
 import { Progress } from '~/components/ui/Progress';
-import { RotateCw, Trash2, Code, Database, Package, Loader2 } from 'lucide-react';
+import { RotateCw, Trash2, Code, Database, Package, Loader2, Check } from 'lucide-react';
 import { classNames } from '~/utils/classNames';
 import type { OllamaModel } from './types';
 
@@ -10,16 +10,29 @@ interface ModelCardProps {
   model: OllamaModel;
   onUpdate: () => void;
   onDelete: () => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }
 
-function ModelCard({ model, onUpdate, onDelete }: ModelCardProps) {
+function ModelCard({ model, onUpdate, onDelete, isSelected, onSelect }: ModelCardProps) {
   return (
-    <Card className="bg-mindvex-elements-background-depth-3 hover:bg-mindvex-elements-background-depth-4 transition-all duration-200 shadow-sm hover:shadow-md border border-mindvex-elements-borderColor hover:border-purple-500/20">
+    <Card
+      className={classNames(
+        'bg-mindvex-elements-background-depth-3 hover:bg-mindvex-elements-background-depth-4 transition-all duration-200 shadow-sm hover:shadow-md border',
+        isSelected ? 'border-purple-500 ring-1 ring-purple-500/20' : 'border-mindvex-elements-borderColor hover:border-purple-500/20',
+      )}
+    >
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium text-mindvex-elements-textPrimary font-mono">{model.name}</h4>
+              {isSelected && (
+                <span className="bg-purple-500/10 text-purple-500 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+                  <Check className="w-2.5 h-2.5" />
+                  ACTIVE
+                </span>
+              )}
               {model.status && model.status !== 'idle' && (
                 <span
                   className={classNames('px-2 py-0.5 rounded-full text-xs font-medium', {
@@ -54,6 +67,17 @@ function ModelCard({ model, onUpdate, onDelete }: ModelCardProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isSelected && (
+              <button
+                onClick={onSelect}
+                className={classNames(
+                  'flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-all duration-200',
+                  'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-sm font-medium',
+                )}
+              >
+                Select
+              </button>
+            )}
             <button
               onClick={onUpdate}
               disabled={model.status === 'updating'}

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
+import { providersStore } from '~/lib/stores/settings';
+import { useStore } from '@nanostores/react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -19,6 +21,7 @@ export function ChatPanel() {
   const [loading, setLoading] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const providers = useStore(providersStore);
 
   useEffect(() => {
     const recent = repositoryHistoryStore.getRecentRepositories(1);
@@ -55,13 +58,23 @@ export function ChatPanel() {
         const desc = await mcpDescribeModule(repoUrl, moduleName);
         setMessages((prev) => [...prev, { role: 'assistant', content: desc.description }]);
       } else {
-        // AI chat via Gemini — primary mode
+        // AI chat via Selected Provider
         const history: ChatHistoryItem[] = messages.map((m) => ({
           role: m.role,
           content: m.content,
         }));
 
-        const response = await mcpChat(repoUrl, input, history);
+        const enabledProviders = Object.values(providers).filter(p => p.settings.enabled);
+        const activeProvider = enabledProviders[0] || null;
+
+        const providerInfo = activeProvider ? {
+          name: activeProvider.name,
+          model: activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
+          apiKey: activeProvider.settings.apiKey,
+          baseUrl: activeProvider.settings.baseUrl,
+        } : undefined;
+
+        const response = await mcpChat(repoUrl, input, history, providerInfo);
         setMessages((prev) => [...prev, { role: 'assistant', content: response.reply, model: response.model }]);
       }
     } catch (err: any) {

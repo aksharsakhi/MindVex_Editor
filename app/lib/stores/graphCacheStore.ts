@@ -5,7 +5,7 @@
  * All 6 tool pages read from this shared cache so results are instant.
  */
 import { atom } from 'nanostores';
-import { buildGraph, getDependencies, type GraphResponse } from '~/lib/graph/graphClient';
+import { buildGraph, getDependencies, getFallbackGraph, type GraphResponse } from '~/lib/graph/graphClient';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -63,15 +63,14 @@ export async function refreshGraph(repoUrl: string): Promise<void> {
 
     /*
      * Polling finished without finding nodes.
-     * Accept the empty graph rather than showing "Build Failed".
-     * The SCIP index may not have been uploaded for this repo yet.
+     * Use fallback graph from local filesystem.
      */
     try {
-      const data = await getDependencies(repoUrl);
-      graphCache.set(data); // may have 0 nodes — that's OK
+      const data = await getFallbackGraph();
+      graphCache.set(data);
       graphCacheStatus.set('ready');
     } catch {
-      graphCacheError.set('Could not fetch graph data from backend.');
+      graphCacheError.set('Could not fetch graph data from backend or generate fallback.');
       graphCacheStatus.set('error');
     }
   } catch (err: any) {
