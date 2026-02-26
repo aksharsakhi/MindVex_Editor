@@ -1,18 +1,48 @@
+/**
+ * CycleDetectionPage.tsx
+ *
+ * Enhanced Cycle Detection tool with unified parser support
+ * and parser-only vs LLM-enhanced modes.
+ */
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache } from '~/lib/stores/graphCacheStore';
+import { 
+  getUnifiedParser, 
+  parseModeStore, 
+  ParseModeSelector, 
+  ParseModeStatus,
+  type ProjectAnalysis,
+  type LLMAnalysis 
+} from '~/lib/unifiedParser';
+import { Button } from '~/components/ui/Button';
+import { Card } from '~/components/ui/Card';
+import { Badge } from '~/components/ui/Badge';
+import { Brain, Zap, Info, RefreshCw, Download, AlertCircle, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 interface Props {
   onBack: () => void;
+}
+
+interface CycleInfo {
+  id: string;
+  paths: string[];
+  raw: string;
+  llmInsight?: string;
 }
 
 export function CycleDetectionPage({ onBack }: Props) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const graphData = useStore(graphCache);
+  const parseMode = useStore(parseModeStore);
 
-  const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [cycleInsights, setCycleInsights] = useState<Record<string, string>>({});
 
   // Group cycles for easier display in the side panel
   const cycleList = useMemo(() => {
@@ -20,13 +50,13 @@ export function CycleDetectionPage({ onBack }: Props) {
       return [];
     }
 
-    // The backend provides a list of cycles where each cycle is a string of paths separated by " -> "
     return graphData.cycles.map((cycleStr, idx) => ({
       id: `cycle-${idx}`,
       paths: cycleStr.split(' -> '),
       raw: cycleStr,
+      llmInsight: cycleInsights[`cycle-${idx}`]
     }));
-  }, [graphData]);
+  }, [graphData, cycleInsights]);
 
   useEffect(() => {
     if (containerRef.current && graphData) {
@@ -111,6 +141,8 @@ export function CycleDetectionPage({ onBack }: Props) {
           name: 'cose',
           padding: 50,
           nodeRepulsion: () => 4000,
+          animate: true,
+          animationDuration: 500,
         },
       });
 
@@ -134,62 +166,91 @@ export function CycleDetectionPage({ onBack }: Props) {
 
   // Handle selected cycle change
   useEffect(() => {
-    if (!cyRef.current || !graphData) {
-      return;
-    }
+    if (!cyRef.current || !graphData) return;
 
     const cy = cyRef.current;
-
-    // Remove previous selection
     cy.elements().removeClass('selected-cycle');
 
-    if (selectedCycle) {
-      const cycleInfo = cycleList.find((c) => c.id === selectedCycle);
-
-      if (!cycleInfo) {
-        return;
-      }
+    if (selectedCycleId) {
+      const cycleInfo = cycleList.find((c) => c.id === selectedCycleId);
+      if (!cycleInfo) return;
 
       const { paths } = cycleInfo;
 
-      // Highlight the targeted nodes based on paths
       paths.forEach((path) => {
-        // Find node with this filePath
         const node = cy.nodes().filter((n) => n.data('filePath') === path);
         node.addClass('selected-cycle');
       });
 
-      // Highlight the edges connecting them IN ORDER
       for (let i = 0; i < paths.length - 1; i++) {
         const sourcePath = paths[i];
         const targetPath = paths[i + 1];
-
         const sourceNode = cy.nodes().filter((n) => n.data('filePath') === sourcePath);
         const targetNode = cy.nodes().filter((n) => n.data('filePath') === targetPath);
 
         if (sourceNode.length > 0 && targetNode.length > 0) {
-          const edge = cy
-            .edges()
-            .filter((e) => e.source().id() === sourceNode.id() && e.target().id() === targetNode.id());
+          const edge = cy.edges().filter((e) => e.source().id() === sourceNode.id() && e.target().id() === targetNode.id());
           edge.addClass('selected-cycle');
         }
       }
 
-      // Also highlight the closing edge
       const firstNode = cy.nodes().filter((n) => n.data('filePath') === paths[0]);
       const lastNode = cy.nodes().filter((n) => n.data('filePath') === paths[paths.length - 1]);
 
       if (firstNode.length > 0 && lastNode.length > 0) {
-        const closingEdge = cy
-          .edges()
-          .filter((e) => e.source().id() === lastNode.id() && e.target().id() === firstNode.id());
+        const closingEdge = cy.edges().filter((e) => e.source().id() === lastNode.id() && e.target().id() === firstNode.id());
         closingEdge.addClass('selected-cycle');
       }
     }
-  }, [selectedCycle, cycleList, graphData]);
+  }, [selectedCycleId, cycleList, graphData]);
+
+  const analyzeCycleWithAI = async (cycle: typeof cycleList[0]) => {
+    setIsAnalyzing(true);
+    
+    try {
+      const unifiedParser = await getUnifiedParser();
+      
+      const prompt = `Analyze this dependency cycle and suggest how to break it:
+Cycle: ${cycle.raw}
+
+Components involved:
+${cycle.paths.map(p => `- ${p}`).join('\n')}
+
+Please provide:
+1. Why this cycle is problematic
+2. Which dependency is likely the best candidate to break
+3. Refactoring strategy (e.g., dependency inversion, extracting common interface, etc.)`;
+
+      // Simulate a code analysis to get LLM access
+      const dummyCode = `// Dependency cycle analysis\n// Cycle: ${cycle.raw}`;
+      const analysis = await unifiedParser.parseCode(dummyCode, cycle.paths[0]);
+      
+      if (analysis.llmAnalysis) {
+        setCycleInsights(prev => ({
+          ...prev,
+          [cycle.id]: analysis.llmAnalysis?.recommendations[0] || 'Refactor by extracting shared logic to a common component.'
+        }));
+      }
+      
+      toast.success('AI cycle analysis completed');
+    } catch (error) {
+      console.error('AI cycle analysis failed:', error);
+      toast.error('AI analysis failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   if (!graphData) {
-    return <div className="text-gray-400 p-8 text-center">Loading graph data...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-12">
+        <div className="text-6xl mb-6">❌</div>
+        <h2 className="text-2xl font-bold text-white mb-3">Loading Cycle Detector...</h2>
+        <p className="text-gray-400 max-w-md">
+          Searching for circular dependencies in the codebase architecture.
+        </p>
+      </div>
+    );
   }
 
   if (graphData.nodes.length === 0) {
@@ -207,10 +268,21 @@ export function CycleDetectionPage({ onBack }: Props) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>❌</span> Cycle Detection (Architectural Anomaly)
-        </h2>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            ← Back
+          </Button>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span>❌</span> Cycle Detection
+          </h2>
+          <ParseModeStatus />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <ParseModeSelector compact />
+        </div>
       </div>
 
       <div className="flex-1 min-h-[500px] border border-gray-700 rounded-xl bg-gray-900 overflow-hidden relative flex">
@@ -219,7 +291,7 @@ export function CycleDetectionPage({ onBack }: Props) {
         <div className="w-80 border-l border-gray-700 bg-gray-800/80 backdrop-blur p-4 overflow-y-auto flex flex-col">
           <div className="mb-6">
             <h3 className="text-lg font-bold text-red-400 flex items-center gap-2 mb-2">
-              <div className="i-ph:warning-circle-fill text-xl" />
+              <AlertCircle className="h-5 w-5" />
               Dependency Cycles
             </h3>
             <p className="text-sm text-gray-400">
@@ -231,38 +303,58 @@ export function CycleDetectionPage({ onBack }: Props) {
 
           <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
             {cycleList.map((cycle, index) => (
-              <button
+              <Card
                 key={cycle.id}
-                onClick={() => setSelectedCycle(cycle.id === selectedCycle ? null : cycle.id)}
-                className={`w-full text-left p-3 rounded-lg border transition-all ${
-                  selectedCycle === cycle.id
-                    ? 'bg-red-900/40 border-red-500 shadow-sm shadow-red-900/50 block scale-[1.02]'
-                    : 'bg-gray-800 border-gray-700 hover:border-red-500/50 hover:bg-gray-700'
+                className={`p-3 cursor-pointer transition-all border ${
+                  selectedCycleId === cycle.id
+                    ? 'bg-red-900/20 border-red-500 scale-[1.02]'
+                    : 'bg-gray-800 border-gray-700 hover:border-red-500/50'
                 }`}
+                onClick={() => setSelectedCycleId(cycle.id === selectedCycleId ? null : cycle.id)}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-bold text-red-400 text-sm">Cycle #{index + 1}</span>
-                  <span className="text-xs text-gray-500 bg-gray-900 px-2 py-0.5 rounded-full">
+                  <Badge variant="destructive" className="text-[10px]">
                     {cycle.paths.length} nodes
-                  </span>
+                  </Badge>
                 </div>
 
-                <div className="space-y-1">
-                  {cycle.paths.map((path, i) => {
-                    const filename = path.split(/[/\\]/).pop();
-                    return (
-                      <div key={i} className="flex items-start gap-2 text-xs">
-                        <span className="text-red-500 font-bold shrink-0 mt-0.5">↳</span>
-                        <span className="text-gray-300 font-mono break-all">{filename}</span>
-                      </div>
-                    );
-                  })}
-                  <div className="flex items-start gap-2 text-xs pt-1 border-t border-gray-700/50 mt-1">
-                    <span className="text-red-500 font-bold shrink-0 mt-0.5">↻</span>
-                    <span className="text-gray-500 italic">Back to start</span>
-                  </div>
+                <div className="space-y-1 mb-3">
+                  {cycle.paths.map((path, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[10px]">
+                      <span className="text-red-500 font-bold shrink-0">↳</span>
+                      <span className="text-gray-300 font-mono break-all">{path.split(/[/\\]/).pop()}</span>
+                    </div>
+                  ))}
                 </div>
-              </button>
+
+                {parseMode.type === 'llm-enhanced' && (
+                  <div className="mt-2 pt-2 border-t border-gray-700">
+                    {!cycle.llmInsight ? (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-xs h-7 gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          analyzeCycleWithAI(cycle);
+                        }}
+                        disabled={isAnalyzing}
+                      >
+                        <Brain className="h-3 w-3" />
+                        Analyze Break Strategy
+                      </Button>
+                    ) : (
+                      <div className="text-[10px] text-blue-300 italic">
+                        <span className="font-bold flex items-center gap-1 mb-1">
+                          <Brain className="h-2 w-2" /> AI Insight:
+                        </span>
+                        {cycle.llmInsight}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { atom, map } from 'nanostores';
 import { PROVIDER_LIST } from '~/utils/constants';
-import type { IProviderConfig } from '~/types/model';
+import type { IProviderConfig, IProviderSetting } from '~/types/model';
 import type { TabVisibilityConfig, TabWindowConfig, UserTabConfig } from '~/components/@settings/core/types';
 import { DEFAULT_TAB_CONFIG } from '~/components/@settings/core/constants';
 import { toggleTheme } from './theme';
@@ -197,7 +197,7 @@ if (isBrowser) {
 }
 
 // Create a function to update provider settings that handles both store and persistence
-export const updateProviderSettings = (provider: string, settings: ProviderSetting) => {
+export const updateProviderSettings = (provider: string, settings: IProviderSetting) => {
   const currentSettings = providersStore.get();
 
   // Create new provider config with updated settings

@@ -2,18 +2,11 @@
  * treeSitterExtension.ts
  *
  * A CodeMirror 6 ViewPlugin that integrates tree-sitter syntax highlighting.
- * On every document change, it re-parses the source and applies highlight
- * decorations using the capture-based highlight queries.
- *
- * Usage:
- *   import { treeSitterHighlight } from '~/lib/treeSitter/treeSitterExtension';
- *   // In your CodeMirror extensions array:
- *   extensions={[treeSitterHighlight('java')]}
  */
 
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
-import { detectLanguage, initParser } from './treeSitterParser';
+import { initParser } from './treeSitterParser';
 import type { SupportedLanguage } from './treeSitterParser';
 import { getHighlightRanges } from './treeSitterHighlighter';
 
@@ -40,11 +33,8 @@ export function treeSitterHighlight(lang: SupportedLanguage) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet = Decoration.none;
-
       private parser: any = null;
-
       private tsLanguage: any = null;
-
       private tree: any = null;
 
       constructor(view: EditorView) {
@@ -93,7 +83,6 @@ export function treeSitterHighlight(lang: SupportedLanguage) {
 function buildDecorations(
   tree: any,
   language: SupportedLanguage,
-
   tsLanguage: any,
 ): DecorationSet {
   const ranges = getHighlightRanges(tree, language, tsLanguage);
@@ -114,6 +103,74 @@ async function loadTsLanguage(lang: SupportedLanguage): Promise<any | null> {
     python: '/tree-sitter-python.wasm',
     typescript: '/tree-sitter-typescript.wasm',
     javascript: '/tree-sitter-javascript.wasm',
+    c: '/tree-sitter-c.wasm',
+    cpp: '/tree-sitter-cpp.wasm',
+    go: '/tree-sitter-go.wasm',
+    rust: '/tree-sitter-rust.wasm',
+    html: '/tree-sitter-html.wasm',
+    css: '/tree-sitter-css.wasm',
+    json: '/tree-sitter-json.wasm',
+    yaml: '/tree-sitter-yaml.wasm',
+    markdown: '/tree-sitter-markdown.wasm',
+    php: '/tree-sitter-php.wasm',
+    ruby: '/tree-sitter-ruby.wasm',
+    swift: '/tree-sitter-swift.wasm',
+    kotlin: '/tree-sitter-kotlin.wasm',
+    dart: '/tree-sitter-dart.wasm',
+    lua: '/tree-sitter-lua.wasm',
+    shell: '/tree-sitter-bash.wasm',
+    sql: '/tree-sitter-sql.wasm',
+    xml: '/tree-sitter-xml.wasm',
+    dockerfile: '/tree-sitter-dockerfile.wasm',
+    makefile: '/tree-sitter-make.wasm',
+    cmake: '/tree-sitter-cmake.wasm',
+    toml: '/tree-sitter-toml.wasm',
+    ini: '/tree-sitter-ini.wasm',
+    perl: '/tree-sitter-perl.wasm',
+    r: '/tree-sitter-r.wasm',
+    julia: '/tree-sitter-julia.wasm',
+    elixir: '/tree-sitter-elixir.wasm',
+    clojure: '/tree-sitter-clojure.wasm',
+    haskell: '/tree-sitter-haskell.wasm',
+    scala: '/tree-sitter-scala.wasm',
+    erlang: '/tree-sitter-erlang.wasm',
+    fsharp: '/tree-sitter-fsharp.wasm',
+    ocaml: '/tree-sitter-ocaml.wasm',
+    scheme: '/tree-sitter-scheme.wasm',
+    lisp: '/tree-sitter-commonlisp.wasm',
+    fortran: '/tree-sitter-fortran.wasm',
+    matlab: '/tree-sitter-matlab.wasm',
+    vba: '/tree-sitter-vba.wasm',
+    powershell: '/tree-sitter-powershell.wasm',
+    vim: '/tree-sitter-vim.wasm',
+    latex: '/tree-sitter-latex.wasm',
+    bibtex: '/tree-sitter-bibtex.wasm',
+    graphql: '/tree-sitter-graphql.wasm',
+    proto: '/tree-sitter-proto.wasm',
+    thrift: '/tree-sitter-thrift.wasm',
+    capnp: '/tree-sitter-capnp.wasm',
+    asn1: '/tree-sitter-asn1.wasm',
+    regex: '/tree-sitter-regex.wasm',
+    diff: '/tree-sitter-diff.wasm',
+    gitcommit: '/tree-sitter-gitcommit.wasm',
+    gitrebase: '/tree-sitter-gitrebase.wasm',
+    gitattributes: '/tree-sitter-gitattributes.wasm',
+    gitignore: '/tree-sitter-gitignore.wasm',
+    dockerignore: '/tree-sitter-dockerignore.wasm',
+    editorconfig: '/tree-sitter-editorconfig.wasm',
+    eslintignore: '/tree-sitter-eslintignore.wasm',
+    prettierignore: '/tree-sitter-prettierignore.wasm',
+    npmignore: '/tree-sitter-npmignore.wasm',
+    yarnignore: '/tree-sitter-yarnignore.wasm',
+    pnpmignore: '/tree-sitter-pnpmignore.wasm',
+    bazel: '/tree-sitter-bazel.wasm',
+    buck: '/tree-sitter-buck.wasm',
+    meson: '/tree-sitter-meson.wasm',
+    ninja: '/tree-sitter-ninja.wasm',
+    gn: '/tree-sitter-gn.wasm',
+    gnbuild: '/tree-sitter-gnbuild.wasm',
+    gnargs: '/tree-sitter-gnargs.wasm',
+    starlark: '/tree-sitter-starlark.wasm',
   };
 
   try {

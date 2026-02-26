@@ -190,6 +190,17 @@ export default function LocalProvidersTab() {
     [updateProviderSettings, toast],
   );
 
+  const handleSelectModel = useCallback(
+    (provider: IProviderConfig, modelName: string) => {
+      updateProviderSettings(provider.name, {
+        ...provider.settings,
+        selectedModel: modelName,
+      });
+      toast(`Active model set to ${modelName}`);
+    },
+    [updateProviderSettings, toast],
+  );
+
   const handleUpdateOllamaModel = async (modelName: string) => {
     try {
       setOllamaModels((prev) => prev.map((m) => (m.name === modelName ? { ...m, status: 'updating' } : m)));
@@ -434,6 +445,8 @@ export default function LocalProvidersTab() {
                             model={model}
                             onUpdate={() => handleUpdateOllamaModel(model.name)}
                             onDelete={() => handleDeleteOllamaModel(model.name)}
+                            isSelected={provider.settings.selectedModel === model.name}
+                            onSelect={() => handleSelectModel(provider, model.name)}
                           />
                         ))}
                       </div>

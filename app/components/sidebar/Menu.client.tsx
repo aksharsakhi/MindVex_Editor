@@ -68,7 +68,7 @@ function CurrentDateTime() {
   );
 }
 
-export const Menu = () => {
+export function Menu() {
   const { duplicateCurrentChat, exportChat } = useChatHistory();
   const menuRef = useRef<HTMLDivElement>(null);
   const [list, setList] = useState<ChatHistoryItem[]>([]);
@@ -341,7 +341,6 @@ export const Menu = () => {
 
   const handleSettingsClick = () => {
     setIsSettingsOpen(true);
-    setOpen(false);
   };
 
   const handleSettingsClose = () => {
@@ -418,43 +417,12 @@ export const Menu = () => {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  (input as any).webkitdirectory = true;
-
-                  input.onchange = async (e) => {
-                    const files = Array.from((e.target as HTMLInputElement).files || []);
-
-                    if (files.length > 0) {
-                      try {
-                        const folderName = files[0]?.webkitRelativePath.split('/')[0] || 'Unknown Folder';
-
-                        // Show options to add to existing workspace or create new workspace
-                        const addToExisting = window.confirm(
-                          `Do you want to add this folder to the existing workspace?\n\nClick 'OK' to add to existing workspace, 'Cancel' to create a new workspace (replacing current content)`,
-                        );
-
-                        await importFolderToWorkbench(files, addToExisting);
-                        repositoryHistoryStore.addRepository(
-                          `folder://${folderName}`,
-                          folderName,
-                          `Imported folder: ${folderName}`,
-                        );
-                        toast.success(`Folder ${folderName} imported and added to history`);
-                      } catch (error) {
-                        console.error('Failed to import folder to workbench:', error);
-                        toast.error('Failed to import folder to workbench');
-                      }
-                    }
-                  };
-                  input.click();
-                }}
+                onClick={() => setIsSettingsOpen(true)}
                 className="flex flex-col items-center justify-center bg-mindvex-elements-item-backgroundActive hover:bg-mindvex-elements-item-backgroundHover rounded-lg p-3 transition-colors border border-mindvex-elements-borderColor"
-                title="Import Folder"
+                title="Settings"
               >
-                <span className="inline-block i-ph:folder-open h-5 w-5 mb-1 text-mindvex-elements-textSecondary" />
-                <span className="text-xs text-mindvex-elements-textPrimary">Import Folder</span>
+                <span className="inline-block i-ph:gear-duotone h-5 w-5 mb-1 text-mindvex-elements-textSecondary" />
+                <span className="text-xs text-mindvex-elements-textPrimary">Settings</span>
               </button>
               <button
                 onClick={async () => {

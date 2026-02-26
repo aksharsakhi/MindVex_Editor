@@ -111,11 +111,17 @@ export async function mcpChat(
   repoUrl: string,
   message: string,
   history: ChatHistoryItem[] = [],
+  providerInfo?: {
+    name: string;
+    model?: string;
+    apiKey?: string;
+    baseUrl?: string;
+  },
 ): Promise<McpChatResponse> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/chat?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, provider: providerInfo }),
   });
 
   if (!res.ok) {

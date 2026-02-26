@@ -12,7 +12,8 @@ import { SiAmazon, SiGoogle, SiGithub, SiHuggingface, SiPerplexity, SiOpenai } f
 import { BsRobot, BsCloud } from 'react-icons/bs';
 import { TbBrain, TbCloudComputing } from 'react-icons/tb';
 import { BiCodeBlock, BiChip } from 'react-icons/bi';
-import { FaCloud, FaBrain } from 'react-icons/fa';
+import { FaCloud, FaBrain, FaKey } from 'react-icons/fa';
+import { ExternalLink } from 'lucide-react';
 import type { IconType } from 'react-icons';
 
 // Add type for provider names to ensure type safety
@@ -133,6 +134,22 @@ const CloudProvidersTab = () => {
     [settings],
   );
 
+  const handleUpdateApiKey = useCallback(
+    (provider: IProviderConfig, apiKey: string) => {
+      settings.updateProviderSettings(provider.name, { ...provider.settings, apiKey: apiKey.trim() || undefined });
+      toast.success(`${provider.name} API key updated`);
+    },
+    [settings],
+  );
+
+  const handleUpdateModel = useCallback(
+    (provider: IProviderConfig, modelName: string) => {
+      settings.updateProviderSettings(provider.name, { ...provider.settings, selectedModel: modelName });
+      toast.success(`${provider.name} model updated`);
+    },
+    [settings],
+  );
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -233,57 +250,95 @@ const CloudProvidersTab = () => {
                     />
                   </div>
 
-                  {provider.settings.enabled && URL_CONFIGURABLE_PROVIDERS.includes(provider.name) && (
+                  {provider.settings.enabled && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
+                      className="space-y-4 mt-4"
                     >
-                      <div className="flex items-center gap-2 mt-4">
-                        {editingProvider === provider.name ? (
+                      {/* API Key Input */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-mindvex-elements-textSecondary flex items-center gap-1">
+                            <FaKey className="w-2.5 h-2.5" />
+                            API Key
+                          </label>
+                          {provider.getApiKeyLink && (
+                            <a
+                              href={provider.getApiKeyLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-purple-500 hover:underline flex items-center gap-0.5"
+                            >
+                              {provider.labelForGetApiKey || 'Get Key'}
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                        </div>
+                        <input
+                          type="password"
+                          value={provider.settings.apiKey || ''}
+                          onChange={(e) => handleUpdateApiKey(provider, e.target.value)}
+                          placeholder={`Enter ${provider.name} API key`}
+                          className={classNames(
+                            'w-full px-3 py-1.5 rounded-lg text-sm',
+                            'bg-mindvex-elements-background-depth-3 border border-mindvex-elements-borderColor',
+                            'text-mindvex-elements-textPrimary placeholder-mindvex-elements-textTertiary',
+                            'focus:outline-none focus:ring-2 focus:ring-purple-500/30',
+                            'transition-all duration-200',
+                          )}
+                        />
+                      </div>
+
+                      {/* Model Selection */}
+                      {provider.staticModels && provider.staticModels.length > 0 && (
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-mindvex-elements-textSecondary flex items-center gap-1">
+                            <FaBrain className="w-2.5 h-2.5" />
+                            Default Model
+                          </label>
+                          <select
+                            value={provider.settings.selectedModel || provider.staticModels[0].name}
+                            onChange={(e) => handleUpdateModel(provider, e.target.value)}
+                            className={classNames(
+                              'w-full px-3 py-1.5 rounded-lg text-sm appearance-none',
+                              'bg-mindvex-elements-background-depth-3 border border-mindvex-elements-borderColor',
+                              'text-mindvex-elements-textPrimary',
+                              'focus:outline-none focus:ring-2 focus:ring-purple-500/30',
+                              'transition-all duration-200',
+                            )}
+                          >
+                            {provider.staticModels.map((model) => (
+                              <option key={model.name} value={model.name}>
+                                {model.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Base URL Input (only for configurable providers) */}
+                      {URL_CONFIGURABLE_PROVIDERS.includes(provider.name) && (
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-mindvex-elements-textSecondary flex items-center gap-1">
+                            <div className="i-ph:link text-xs" />
+                            Base URL
+                          </label>
                           <input
                             type="text"
-                            defaultValue={provider.settings.baseUrl}
+                            value={provider.settings.baseUrl || ''}
+                            onChange={(e) => handleUpdateBaseUrl(provider, e.currentTarget.value)}
                             placeholder={`Enter ${provider.name} base URL`}
                             className={classNames(
-                              'flex-1 px-3 py-1.5 rounded-lg text-sm',
+                              'w-full px-3 py-1.5 rounded-lg text-sm',
                               'bg-mindvex-elements-background-depth-3 border border-mindvex-elements-borderColor',
                               'text-mindvex-elements-textPrimary placeholder-mindvex-elements-textTertiary',
                               'focus:outline-none focus:ring-2 focus:ring-purple-500/30',
                               'transition-all duration-200',
                             )}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleUpdateBaseUrl(provider, e.currentTarget.value);
-                              } else if (e.key === 'Escape') {
-                                setEditingProvider(null);
-                              }
-                            }}
-                            onBlur={(e) => handleUpdateBaseUrl(provider, e.target.value)}
-                            autoFocus
                           />
-                        ) : (
-                          <div
-                            className="flex-1 px-3 py-1.5 rounded-lg text-sm cursor-pointer group/url"
-                            onClick={() => setEditingProvider(provider.name)}
-                          >
-                            <div className="flex items-center gap-2 text-mindvex-elements-textSecondary">
-                              <div className="i-ph:link text-sm" />
-                              <span className="group-hover/url:text-purple-500 transition-colors">
-                                {provider.settings.baseUrl || 'Click to set base URL'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {providerBaseUrlEnvKeys[provider.name]?.baseUrlKey && (
-                        <div className="mt-2 text-xs text-green-500">
-                          <div className="flex items-center gap-1">
-                            <div className="i-ph:info" />
-                            <span>Environment URL set in .env file</span>
-                          </div>
                         </div>
                       )}
                     </motion.div>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
@@ -129,6 +129,17 @@ export function QuickActions() {
     setActiveToolId(actionId);
   };
 
+  useEffect(() => {
+    const handleOpenTool = (e: any) => {
+      if (e.detail?.toolId) {
+        setActiveToolId(e.detail.toolId);
+      }
+    };
+
+    window.addEventListener('open-tool', handleOpenTool);
+    return () => window.removeEventListener('open-tool', handleOpenTool);
+  }, []);
+
   const handleBackToMenu = () => {
     setActiveToolId(null);
   };
@@ -168,9 +179,9 @@ export function QuickActions() {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-gray-900 to-gray-800 text-white p-6 overflow-y-auto w-full">
-      <div className="max-w-6xl mx-auto h-full flex flex-col">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="h-full bg-gradient-to-br from-gray-900 to-gray-800 text-white p-6 overflow-hidden w-full flex flex-col">
+      <div className={`mx-auto h-full flex flex-col w-full ${activeToolId ? 'max-w-full' : 'max-w-6xl'}`}>
+        <div className="mb-8 flex items-center justify-between flex-shrink-0">
           <button
             onClick={() => {
               if (activeToolId) {
@@ -247,59 +258,54 @@ export function QuickActions() {
           <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-200">{error}</div>
         )}
 
-        {!activeToolId ? (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 relative">
-            {/* Show an overlay if the graph is currently building/loading overall and we are not in a tool */}
-            {isLoading && (
-              <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm z-10 rounded-xl flex items-center justify-center pointer-events-none">
-                <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg shadow-xl shadow-black/50 flex items-center gap-4 pointer-events-auto shadow">
-                  <div className="i-ph:spinner animate-spin text-2xl text-blue-500" />
-                  <div>
-                    <div className="font-bold text-gray-200">Analyzing Repository</div>
-                    <div className="text-sm text-gray-400">Building knowledge graph via SCIP...</div>
-                  </div>
+        {/* Tool Content */}
+        <div className="flex-1 min-h-0 relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm z-50 rounded-xl flex items-center justify-center">
+              <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl shadow-black/50 flex flex-col items-center gap-4">
+                <div className="i-ph:spinner animate-spin text-4xl text-blue-500" />
+                <div className="text-center">
+                  <div className="font-bold text-gray-200 text-lg">Analyzing Repository</div>
+                  <div className="text-sm text-gray-400 mt-1">Extracting ASTs and resolving dependencies...</div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {quickActions.map((action) => (
-              <div
-                key={action.id}
-                className="p-6 rounded-xl border bg-gray-800/40 backdrop-blur-lg border-gray-700 hover:border-blue-500 cursor-pointer transition-all hover:scale-[1.01]"
-                onClick={() => handleActionClick(action.id)}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="text-3xl">{action.icon}</div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2 text-white">{action.title}</h3>
-                    <p className="text-gray-400 text-sm mb-4">{action.description}</p>
-                    <div className="flex justify-end">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-600/20 text-blue-400">
-                        Open Tool
-                      </span>
+          {activeToolId ? (
+            renderToolPage()
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pr-2 custom-scrollbar pb-10">
+              {quickActions.map((action) => (
+                <button
+                  key={action.id}
+                  onClick={() => handleActionClick(action.id)}
+                  className="group relative bg-gray-800/50 border border-gray-700 rounded-2xl p-6 text-left hover:bg-gray-700/50 hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                >
+                  <div className={`absolute top-0 right-0 w-24 h-24 bg-${action.color}-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500`} />
+
+                  <div className="flex flex-col h-full relative z-10">
+                    <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 w-fit">
+                      {action.icon}
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 text-white group-hover:text-blue-400 transition-colors">
+                      {action.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-6 flex-1">
+                      {action.description}
+                    </p>
+                    <div className="flex items-center text-blue-400 text-sm font-semibold">
+                      Open Tool
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex-1 relative">
-            {/* Show loading overlay over the tool if it's still building */}
-            {isLoading && (
-              <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm z-50 rounded-xl flex items-center justify-center">
-                <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl shadow-black/50 flex flex-col items-center gap-4">
-                  <div className="i-ph:spinner animate-spin text-4xl text-blue-500" />
-                  <div className="text-center">
-                    <div className="font-bold text-gray-200 text-lg">Analyzing Repository</div>
-                    <div className="text-sm text-gray-400 mt-1">Extracting ASTs and resolving dependencies...</div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {renderToolPage()}
-          </div>
-        )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
