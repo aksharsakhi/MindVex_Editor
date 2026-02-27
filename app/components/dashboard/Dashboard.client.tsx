@@ -6,7 +6,22 @@ import { path } from '~/utils/path';
 import { toast } from 'react-toastify';
 import { WORK_DIR } from '~/utils/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/Card';
-import { Brain, FileCode, Layers, AlertCircle, TrendingUp, Cpu, Database, Sparkles, Network, BookOpen, MessageSquare, History, Activity, Code } from 'lucide-react';
+import {
+  Brain,
+  FileCode,
+  Layers,
+  AlertCircle,
+  TrendingUp,
+  Cpu,
+  Database,
+  Sparkles,
+  Network,
+  BookOpen,
+  MessageSquare,
+  History,
+  Activity,
+  Code,
+} from 'lucide-react';
 import { Progress } from '~/components/ui/Progress';
 import { Badge } from '~/components/ui/Badge';
 import { providersStore } from '~/lib/stores/settings';
@@ -20,11 +35,18 @@ interface LanguageDistribution {
   percentage: number;
 }
 
+interface CodeHealthReason {
+  category: 'positive' | 'warning' | 'critical';
+  message: string;
+  impact: number;
+}
+
 interface DashboardData {
   totalFiles: number;
   totalModules: number;
   languagesDetected: number;
   codeHealthScore: number;
+  codeHealthReasons: CodeHealthReason[];
   languageDistribution: LanguageDistribution[];
   recentChanges: string[];
   dependencies: string[];
@@ -53,6 +75,7 @@ export function Dashboard() {
       totalModules: 0,
       languagesDetected: 0,
       codeHealthScore: 0,
+      codeHealthReasons: [],
       languageDistribution: [],
       recentChanges: [],
       dependencies: [],
@@ -71,23 +94,27 @@ export function Dashboard() {
       // Get files from workbench store instead of manual scan for better reliability
       const filesMap = workbenchStore.files.get();
       const fileEntries = Object.entries(filesMap).filter(([_, dirent]) => dirent?.type === 'file');
-      
+
       let analysisFiles: { path: string; content: string }[] = [];
 
       if (fileEntries.length > 0) {
         analysisFiles = fileEntries.map(([path, dirent]) => ({
           path,
-          content: dirent?.type === 'file' ? (dirent as any).content || '' : ''
+          content: dirent?.type === 'file' ? (dirent as any).content || '' : '',
         }));
       } else {
         // Fallback to manual scan if store is empty
         const container = await webcontainer;
+
         async function getAllFiles(dirPath: string): Promise<{ path: string; content: string }[]> {
           const files: { path: string; content: string }[] = [];
+
           try {
             const entries = await container.fs.readdir(dirPath, { withFileTypes: true });
+
             for (const entry of entries) {
               const fullPath = path.join(dirPath, entry.name);
+
               if (entry.isDirectory()) {
                 if (!['node_modules', '.git', 'dist', 'build', '.cache'].includes(entry.name)) {
                   const subFiles = await getAllFiles(fullPath);
@@ -103,34 +130,39 @@ export function Dashboard() {
               }
             }
           } catch (e) {}
+
           return files;
         }
 
-        const [rootFiles, workFiles] = await Promise.all([
-          getAllFiles('/'),
-          getAllFiles(WORK_DIR)
-        ]);
+        const [rootFiles, workFiles] = await Promise.all([getAllFiles('/'), getAllFiles(WORK_DIR)]);
         analysisFiles = workFiles.length >= rootFiles.length ? workFiles : rootFiles;
       }
 
       const totalFiles = analysisFiles.length;
-      
+
       let totalLines = 0;
       let totalCodeLines = 0;
       let totalCommentLines = 0;
       const langStats: Record<string, number> = {};
-      
-      analysisFiles.forEach(file => {
+
+      analysisFiles.forEach((file) => {
         const ext = path.extname(file.path).slice(1);
         const lang = getLanguageFromExtension(ext);
-        if (lang !== 'unknown') langStats[lang] = (langStats[lang] || 0) + 1;
-        
+
+        if (lang !== 'unknown') {
+          langStats[lang] = (langStats[lang] || 0) + 1;
+        }
+
         const lines = file.content.split('\n');
         totalLines += lines.length;
-        lines.forEach(line => {
+        lines.forEach((line) => {
           const trimmed = line.trim();
-          if (trimmed.startsWith('//') || trimmed.startsWith('/*')) totalCommentLines++;
-          else if (trimmed.length > 0) totalCodeLines++;
+
+          if (trimmed.startsWith('//') || trimmed.startsWith('/*')) {
+            totalCommentLines++;
+          } else if (trimmed.length > 0) {
+            totalCodeLines++;
+          }
         });
       });
 
@@ -138,41 +170,143 @@ export function Dashboard() {
         .map(([language, count]) => ({
           language,
           count,
-          percentage: (count / (totalFiles || 1)) * 100
+          percentage: (count / (totalFiles || 1)) * 100,
         }))
         .sort((a, b) => b.count - a.count);
+
+      // Calculate code health reasons
+      const healthReasons: CodeHealthReason[] = [];
+      let healthScore = 100;
+
+      // Documentation check
+      const commentRatio = totalCodeLines > 0 ? totalCommentLines / totalCodeLines : 0;
+
+      if (commentRatio >= 0.3) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Excellent documentation coverage',
+          impact: 15,
+        });
+      } else if (commentRatio >= 0.15) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Good comment density',
+          impact: 10,
+        });
+      } else if (commentRatio >= 0.05) {
+        healthReasons.push({
+          category: 'warning',
+          message: 'Low comment density - improve documentation',
+          impact: -15,
+        });
+        healthScore -= 15;
+      } else {
+        healthReasons.push({
+          category: 'critical',
+          message: 'Minimal documentation detected',
+          impact: -25,
+        });
+        healthScore -= 25;
+      }
+
+      // File count check
+      if (totalFiles > 100) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Large codebase - good project scale',
+          impact: 10,
+        });
+      } else if (totalFiles < 5) {
+        healthReasons.push({
+          category: 'warning',
+          message: 'Small codebase - consider modularization',
+          impact: -5,
+        });
+        healthScore -= 5;
+      }
+
+      // Language diversity check
+      if (languageDistribution.length > 3) {
+        healthReasons.push({
+          category: 'warning',
+          message: 'Multiple languages detected - ensure consistency',
+          impact: -10,
+        });
+        healthScore -= 10;
+      } else if (languageDistribution.length === 1) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Single language stack - good consistency',
+          impact: 10,
+        });
+      }
+
+      // Module structure check
+      const fileToModuleRatio =
+        totalFiles > 0 ? totalFiles / (new Set(analysisFiles.map((f) => path.dirname(f.path))).size || 1) : 0;
+
+      if (fileToModuleRatio > 5 && fileToModuleRatio < 15) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Well-organized module structure',
+          impact: 10,
+        });
+      } else if (fileToModuleRatio > 30) {
+        healthReasons.push({
+          category: 'warning',
+          message: 'Possible file organization issues',
+          impact: -10,
+        });
+        healthScore -= 10;
+      }
+
+      // Code to comment ratio
+      const codeCommentBalance = totalCodeLines > 0 ? totalCommentLines / totalCodeLines : 0;
+
+      if (codeCommentBalance > 0.2) {
+        healthReasons.push({
+          category: 'positive',
+          message: 'Good code-to-comment balance',
+          impact: 5,
+        });
+      }
+
+      // Ensure score is between 0-100
+      healthScore = Math.max(0, Math.min(100, healthScore));
 
       setDashboardState({
         loading: false,
         data: {
           totalFiles,
-          totalModules: new Set(analysisFiles.map(f => path.dirname(f.path))).size,
+          totalModules: new Set(analysisFiles.map((f) => path.dirname(f.path))).size,
           languagesDetected: languageDistribution.length,
-          codeHealthScore: totalFiles > 0 ? 85 : 0,
+          codeHealthScore: healthScore,
+          codeHealthReasons: healthReasons,
           languageDistribution,
           recentChanges: ['Updated run.sh', 'Enhanced AI Providers'],
           dependencies: ['react', 'nanostores', 'cytoscape'],
-          fileStructure: analysisFiles.slice(0, 5).map(f => f.path),
-          potentialIssues: totalCommentLines < totalCodeLines * 0.1 ? ['Low comment density detected'] : [],
+          fileStructure: analysisFiles.slice(0, 5).map((f) => f.path),
+          potentialIssues: healthReasons.filter((r) => r.category !== 'positive').map((r) => r.message),
           architectureLayers: ['Frontend', 'Backend', 'AI Bridge'],
           totalLines,
           totalCodeLines,
           totalCommentLines,
           totalBlankLines: totalLines - totalCodeLines - totalCommentLines,
-          aiSummary: totalFiles > 0 
-            ? "This repository implements a high-performance AI coding environment with unified parsing capabilities."
-            : "No repository files detected yet. Try importing a repository from the sidebar."
-        }
+          aiSummary:
+            totalFiles > 0
+              ? 'This repository implements a high-performance AI coding environment with unified parsing capabilities.'
+              : 'No repository files detected yet. Try importing a repository from the sidebar.',
+        },
       });
     } catch (error) {
       toast.error('Failed to analyze repository');
-      setDashboardState(prev => ({ ...prev, loading: false }));
+      setDashboardState((prev) => ({ ...prev, loading: false }));
     }
   };
 
   useEffect(() => {
     loadDashboardData();
-    
+
     // Subscribe to workbench files to update stats in real-time
     const unsubscribe = workbenchStore.files.subscribe(() => {
       loadDashboardData();
@@ -191,18 +325,25 @@ export function Dashboard() {
     );
   }
 
-  const activeProvider = Object.values(providers).find(p => p.settings.enabled);
+  const activeProvider = Object.values(providers).find((p) => p.settings.enabled);
 
-  const stats = data.totalFiles > 0 ? data : {
-    totalFiles: 0,
-    totalModules: 0,
-    totalLines: 0,
-    codeHealthScore: 0,
-    languageDistribution: [],
-    aiSummary: "No repository files detected yet. Try importing a repository from the sidebar.",
-    architectureLayers: ["N/A"],
-    potentialIssues: ["Import a repository to see optimization vectors"]
-  };
+  const stats =
+    data.totalFiles > 0
+      ? data
+      : {
+          totalFiles: 0,
+          totalModules: 0,
+          totalLines: 0,
+          totalCodeLines: 0,
+          totalCommentLines: 0,
+          totalBlankLines: 0,
+          codeHealthScore: 0,
+          codeHealthReasons: [],
+          languageDistribution: [],
+          aiSummary: 'No repository files detected yet. Try importing a repository from the sidebar.',
+          architectureLayers: ['N/A'],
+          potentialIssues: ['Import a repository to see optimization vectors'],
+        };
 
   return (
     <div className="p-6 space-y-8 overflow-auto h-full max-w-[1600px] mx-auto w-full transition-all duration-300">
@@ -216,17 +357,22 @@ export function Dashboard() {
             <h1 className="text-2xl font-black text-white tracking-tight">Project Intelligence</h1>
             <p className="text-sm text-gray-400 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Active Provider: <span className="text-purple-400 font-bold uppercase tracking-wider">{activeProvider?.name || 'None Configured'}</span>
+              Active Provider:{' '}
+              <span className="text-purple-400 font-bold uppercase tracking-wider">
+                {activeProvider?.name || 'None Configured'}
+              </span>
               {activeProvider?.settings.selectedModel && (
                 <>
                   <span className="text-gray-600">•</span>
-                  <Badge variant="outline" className="border-purple-500/30 text-purple-300 text-[10px]">{activeProvider.settings.selectedModel}</Badge>
+                  <Badge variant="outline" className="border-purple-500/30 text-purple-300 text-[10px]">
+                    {activeProvider.settings.selectedModel}
+                  </Badge>
                 </>
               )}
             </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => setIsSettingsOpen(true)}
           className="w-full sm:w-auto px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-black transition-all shadow-lg hover:shadow-purple-500/25 active:scale-95 uppercase tracking-widest"
         >
@@ -236,63 +382,63 @@ export function Dashboard() {
 
       {/* Main Tool Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ToolCard 
-          icon={<Network className="w-6 h-6 text-blue-400" />} 
-          title="Knowledge Graph Construction" 
+        <ToolCard
+          icon={<Network className="w-6 h-6 text-blue-400" />}
+          title="Knowledge Graph Construction"
           desc="Build graphs using AST parsing"
           toolId="kg-construction"
         />
-        <ToolCard 
-          icon={<Code className="w-6 h-6 text-green-400" />} 
-          title="Multi-Language AST Parsing" 
+        <ToolCard
+          icon={<Code className="w-6 h-6 text-green-400" />}
+          title="Multi-Language AST Parsing"
           desc="Parse code into Abstract Syntax Trees"
           toolId="ast-parsing"
         />
-        <ToolCard 
-          icon={<Layers className="w-6 h-6 text-purple-400" />} 
-          title="Architecture / Dependency Graph" 
+        <ToolCard
+          icon={<Layers className="w-6 h-6 text-purple-400" />}
+          title="Architecture / Dependency Graph"
           desc="Visualize your code architecture"
           toolId="architecture-graph"
         />
-        <ToolCard 
-          icon={<Activity className="w-6 h-6 text-orange-400" />} 
-          title="Real-Time Graph Update" 
+        <ToolCard
+          icon={<Activity className="w-6 h-6 text-orange-400" />}
+          title="Real-Time Graph Update"
           desc="Update graphs as code changes"
           toolId="realtime-graph"
         />
-        <ToolCard 
-          icon={<AlertCircle className="w-6 h-6 text-red-400" />} 
-          title="Change Impact Analysis" 
+        <ToolCard
+          icon={<AlertCircle className="w-6 h-6 text-red-400" />}
+          title="Change Impact Analysis"
           desc="Analyze impact of code changes"
           toolId="impact-analysis"
         />
-        <ToolCard 
-          icon={<Activity className="w-6 h-6 text-yellow-400" />} 
-          title="Cycle Detection" 
+        <ToolCard
+          icon={<Activity className="w-6 h-6 text-yellow-400" />}
+          title="Cycle Detection"
           desc="Detect architectural anomalies"
           toolId="cycle-detection"
         />
-        <ToolCard 
-          icon={<TrendingUp className="w-6 h-6 text-pink-400" />} 
-          title="Code Analytics & Hotspots" 
+        <ToolCard
+          icon={<TrendingUp className="w-6 h-6 text-pink-400" />}
+          title="Code Analytics & Hotspots"
           desc="Visualize churn and rework trends"
           toolId="analytics-dashboard"
         />
-        <ToolCard 
-          icon={<History className="w-6 h-6 text-indigo-400" />} 
-          title="Evolutionary Blame" 
+        <ToolCard
+          icon={<History className="w-6 h-6 text-indigo-400" />}
+          title="Evolutionary Blame"
           desc="AI-powered git churn analysis"
           toolId="evolutionary-blame"
         />
-        <ToolCard 
-          icon={<MessageSquare className="w-6 h-6 text-cyan-400" />} 
-          title="Code Intelligence Chat" 
+        <ToolCard
+          icon={<MessageSquare className="w-6 h-6 text-cyan-400" />}
+          title="Code Intelligence Chat"
           desc="Ask questions using semantic search"
           toolId="intelligent-chat"
         />
-        <ToolCard 
-          icon={<BookOpen className="w-6 h-6 text-emerald-400" />} 
-          title="Living Wiki & Documentation" 
+        <ToolCard
+          icon={<BookOpen className="w-6 h-6 text-emerald-400" />}
+          title="Living Wiki & Documentation"
           desc="AI-generated project docs"
           toolId="living-wiki"
         />
@@ -302,8 +448,16 @@ export function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<FileCode className="w-5 h-5 text-blue-500" />} label="Files" value={stats.totalFiles} />
         <StatCard icon={<Layers className="w-5 h-5 text-green-500" />} label="Modules" value={stats.totalModules} />
-        <StatCard icon={<Database className="w-5 h-5 text-yellow-500" />} label="LOC" value={stats.totalLines.toLocaleString()} />
-        <StatCard icon={<TrendingUp className="w-5 h-5 text-purple-500" />} label="Health" value={`${stats.codeHealthScore}%`} />
+        <StatCard
+          icon={<Database className="w-5 h-5 text-yellow-500" />}
+          label="LOC"
+          value={stats.totalLines.toLocaleString()}
+        />
+        <StatCard
+          icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
+          label="Health"
+          value={`${stats.codeHealthScore}%`}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -334,8 +488,120 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Code Health Details */}
+        <Card className="lg:col-span-1 bg-mindvex-elements-background-depth-2 border-mindvex-elements-borderColor shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-white/5 bg-white/5">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              Code Health Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center gap-4">
+              <div
+                className={`text-4xl font-black ${stats.codeHealthScore >= 80 ? 'text-green-500' : stats.codeHealthScore >= 60 ? 'text-yellow-500' : 'text-red-500'}`}
+              >
+                {stats.codeHealthScore}%
+              </div>
+              <div className="flex-1">
+                <Progress value={stats.codeHealthScore} className="h-2 bg-gray-800 mb-2" />
+                <p className="text-xs text-gray-400">Overall Health Score</p>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 space-y-3">
+              {stats.codeHealthReasons.map((reason, idx) => (
+                <div key={idx} className="text-xs space-y-1">
+                  <div className="flex items-start gap-2">
+                    {reason.category === 'positive' && <span className="text-green-500 font-bold mt-0.5">✓</span>}
+                    {reason.category === 'warning' && <span className="text-yellow-500 font-bold mt-0.5">⚠</span>}
+                    {reason.category === 'critical' && <span className="text-red-500 font-bold mt-0.5">✗</span>}
+                    <span
+                      className={`flex-1 ${reason.category === 'positive' ? 'text-green-400' : reason.category === 'warning' ? 'text-yellow-400' : 'text-red-400'}`}
+                    >
+                      {reason.message}
+                    </span>
+                  </div>
+                  {reason.impact !== 0 && (
+                    <div className="text-gray-500 ml-5">
+                      Impact: {reason.impact > 0 ? '+' : ''}
+                      {reason.impact}%
+                    </div>
+                  )}
+                </div>
+              ))}
+              {stats.codeHealthReasons.length === 0 && (
+                <div className="text-xs text-gray-500 text-center py-2">No analysis available yet</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lines of Code Breakdown */}
+        <Card className="lg:col-span-1 bg-mindvex-elements-background-depth-2 border-mindvex-elements-borderColor shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-white/5 bg-white/5">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-white/80">
+              <Database className="w-4 h-4 text-blue-500" />
+              Code Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 uppercase font-bold">Total Lines</span>
+                <span className="text-lg font-black text-white">{stats.totalLines.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 uppercase font-bold">Code Lines</span>
+                <span className="text-lg font-black text-green-400">{stats.totalCodeLines.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 uppercase font-bold">Comments</span>
+                <span className="text-lg font-black text-blue-400">{stats.totalCommentLines.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 uppercase font-bold">Blank Lines</span>
+                <span className="text-lg font-black text-gray-500">{stats.totalBlankLines.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4">
+              <div className="text-xs text-gray-400 mb-3 font-bold uppercase">Distribution</div>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Code</span>
+                    <span className="text-green-400">
+                      {((stats.totalCodeLines / stats.totalLines) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={(stats.totalCodeLines / stats.totalLines) * 100} className="h-1.5 bg-gray-800" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Comments</span>
+                    <span className="text-blue-400">
+                      {((stats.totalCommentLines / stats.totalLines) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={(stats.totalCommentLines / stats.totalLines) * 100} className="h-1.5 bg-gray-800" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Blank</span>
+                    <span className="text-gray-400">
+                      {((stats.totalBlankLines / stats.totalLines) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={(stats.totalBlankLines / stats.totalLines) * 100} className="h-1.5 bg-gray-800" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* AI Summary */}
-        <Card className="lg:col-span-2 bg-mindvex-elements-background-depth-2 border-mindvex-elements-borderColor shadow-xl overflow-hidden relative group">
+        <Card className="lg:col-span-3 bg-mindvex-elements-background-depth-2 border-mindvex-elements-borderColor shadow-xl overflow-hidden relative group">
           <div className="absolute -top-10 -right-10 p-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
             <Brain className="w-80 h-80" />
           </div>
@@ -347,17 +613,19 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="p-8 space-y-6 relative z-10">
             <div className="bg-purple-500/5 p-6 rounded-2xl border border-purple-500/10 backdrop-blur-sm shadow-inner">
-              <p className="text-gray-200 text-lg leading-relaxed font-medium italic">
-                "{stats.aiSummary}"
-              </p>
+              <p className="text-gray-200 text-lg leading-relaxed font-medium italic">"{stats.aiSummary}"</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Core Architecture</h4>
                 <div className="flex flex-wrap gap-2">
-                  {stats.architectureLayers.map(layer => (
-                    <Badge key={layer} variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] px-2 py-0.5">
+                  {stats.architectureLayers.map((layer) => (
+                    <Badge
+                      key={layer}
+                      variant="secondary"
+                      className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] px-2 py-0.5"
+                    >
                       {layer}
                     </Badge>
                   ))}
@@ -365,7 +633,9 @@ export function Dashboard() {
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Optimization Vectors</h4>
+                <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                  Optimization Vectors
+                </h4>
                 <ul className="space-y-2">
                   {stats.potentialIssues.map((issue, idx) => (
                     <li key={idx} className="text-xs text-gray-400 flex items-start gap-2">
@@ -391,9 +661,19 @@ export function Dashboard() {
   );
 }
 
-function ToolCard({ icon, title, desc, toolId }: { icon: React.ReactNode; title: string; desc: string; toolId: string }) {
+function ToolCard({
+  icon,
+  title,
+  desc,
+  toolId,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  toolId: string;
+}) {
   return (
-    <button 
+    <button
       onClick={() => {
         workbenchStore.currentView.set('quick-actions');
         window.dispatchEvent(new CustomEvent('open-tool', { detail: { toolId } }));
@@ -420,9 +700,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   return (
     <Card className="bg-mindvex-elements-background-depth-2 border-mindvex-elements-borderColor hover:border-purple-500/30 transition-all duration-300 group shadow-md overflow-hidden relative">
       <CardContent className="p-5 flex items-center gap-4 relative z-10">
-        <div className="p-3 rounded-xl bg-gray-800/50 group-hover:bg-purple-500/10 transition-colors">
-          {icon}
-        </div>
+        <div className="p-3 rounded-xl bg-gray-800/50 group-hover:bg-purple-500/10 transition-colors">{icon}</div>
         <div>
           <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">{label}</p>
           <p className="text-2xl font-black text-white tabular-nums tracking-tighter">{value}</p>

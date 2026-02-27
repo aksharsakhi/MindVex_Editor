@@ -15,13 +15,14 @@ import {
   type WeeklyChurn,
 } from '~/lib/analytics/analyticsClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
+import { workbenchStore } from '~/lib/stores/workbench';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
@@ -123,7 +124,7 @@ export function AnalyticsDashboard() {
   const [miningLoading, setMiningLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
-  
+
   const parseMode = useStore(parseModeStore);
   const [llmAnalysis, setLlmAnalysis] = useState<LLMAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -166,7 +167,7 @@ export function AnalyticsDashboard() {
     try {
       const trend = await getFileTrend(repoUrl, filePath, 12);
       setFileTrend(trend);
-      
+
       // Perform AI analysis if in LLM mode
       if (parseMode.type === 'llm-enhanced') {
         performAIAnalysis(filePath, trend);
@@ -181,27 +182,41 @@ export function AnalyticsDashboard() {
 
   const performAIAnalysis = async (filePath: string, trend: WeeklyChurn[]) => {
     setIsAnalyzing(true);
-    
+
     try {
       const unifiedParser = await getUnifiedParser();
-      
-      const fileContent = `// Hotspot Analysis for ${filePath}
-// Churn Rate: ${trend.length > 0 ? (trend.reduce((s, t) => s + t.churnRate, 0) / trend.length).toFixed(1) : 0}%
-// Total Commits: ${trend.reduce((s, t) => s + t.commitCount, 0)}
+      const filesMap = workbenchStore.files.get();
+      const dirent = filesMap[filePath];
+      let realContent = '';
 
-/**
- * This file is identified as a hotspot with high code churn.
- * Frequent changes may indicate architectural issues or high complexity.
- */
-class HotspotAnalysis {
-  // Analyzed for ${filePath}
-}`;
+      if (dirent?.type === 'file') {
+        realContent = dirent.content;
+      }
 
-      const analysis = await unifiedParser.parseCode(fileContent, filePath);
+      const avgChurn = trend.length > 0 ? (trend.reduce((s, t) => s + t.churnRate, 0) / trend.length).toFixed(1) : '0';
+      const totalCommits = trend.reduce((s, t) => s + t.commitCount, 0);
+
+      const statsContext = `// Hotspot Analysis Context:
+// File: ${filePath}
+// Avg Churn Rate: ${avgChurn}%
+// Total Commits: ${totalCommits}
+// 
+// Task: Analyze why this file is a hotspot. Look for high complexity, god classes, or frequent modification patterns.
+`;
+
+      // If content is too long, truncate it to avoid token limits (simple truncation)
+      const MAX_CHARS = 20000;
+      const contentToAnalyze =
+        realContent.length > MAX_CHARS ? realContent.substring(0, MAX_CHARS) + '\n// ... (truncated)' : realContent;
+
+      const codeToAnalyze = contentToAnalyze ? statsContext + '\n' + contentToAnalyze : statsContext;
+
+      const analysis = await unifiedParser.parseCode(codeToAnalyze, filePath);
       setLlmAnalysis(analysis.llmAnalysis || null);
       toast.success('AI hotspot analysis completed');
     } catch (error) {
       console.error('AI hotspot analysis failed:', error);
+      toast.error('AI analysis failed');
     } finally {
       setIsAnalyzing(false);
     }
@@ -383,7 +398,7 @@ class HotspotAnalysis {
           ) : (
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
               <ChurnLineChart data={fileTrend} />
-              
+
               {/* Summary stats */}
               <div className="grid grid-cols-3 gap-3 mt-4 mb-6">
                 <div className="bg-[#0a0a0a] rounded-lg p-3 text-center border border-white/5">
@@ -412,7 +427,7 @@ class HotspotAnalysis {
                   <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
                     <Brain className="h-4 w-4" /> AI Hotspot Analysis
                   </h3>
-                  
+
                   {isAnalyzing ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 italic">
                       <RefreshCw className="h-3 w-3 animate-spin" /> Analyzing hotspot patterns...
@@ -422,10 +437,12 @@ class HotspotAnalysis {
                       <div className="text-sm text-gray-300 leading-relaxed bg-blue-500/5 p-3 rounded-lg border border-blue-500/10">
                         {llmAnalysis.summary}
                       </div>
-                      
+
                       {llmAnalysis.recommendations.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Recommendations</h4>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                            Recommendations
+                          </h4>
                           <ul className="space-y-1">
                             {llmAnalysis.recommendations.map((rec, idx) => (
                               <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
@@ -440,7 +457,9 @@ class HotspotAnalysis {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-2 bg-gray-800/50 rounded border border-white/5">
                           <div className="text-[10px] text-gray-500 uppercase">Risk Level</div>
-                          <div className={`text-sm font-bold ${llmAnalysis.quality.score < 50 ? 'text-red-400' : 'text-orange-400'}`}>
+                          <div
+                            className={`text-sm font-bold ${llmAnalysis.quality.score < 50 ? 'text-red-400' : 'text-orange-400'}`}
+                          >
                             {llmAnalysis.quality.score < 50 ? 'High' : 'Moderate'}
                           </div>
                         </div>

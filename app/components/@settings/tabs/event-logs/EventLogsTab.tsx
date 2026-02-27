@@ -278,13 +278,13 @@ export function EventLogsTab() {
 
     if (selectedLevel === 'all') {
       return allLogs.filter((log) =>
-        searchQuery ? log.message.toLowerCase().includes(searchQuery.toLowerCase()) : true,
+        searchQuery ? (log.message || '').toLowerCase().includes(searchQuery.toLowerCase()) : true,
       );
     }
 
     return allLogs.filter((log) => {
       const matchesType = log.category === selectedLevel || log.level === selectedLevel;
-      const matchesSearch = searchQuery ? log.message.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+      const matchesSearch = searchQuery ? (log.message || '').toLowerCase().includes(searchQuery.toLowerCase()) : true;
 
       return matchesType && matchesSearch;
     });

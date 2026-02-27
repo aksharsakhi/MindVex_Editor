@@ -45,10 +45,7 @@ export class AIClient {
    * Generate text using AI via MCP Chat
    */
   async generate(options: AIClientOptions): Promise<AIResponse> {
-    const {
-      prompt,
-      system,
-    } = options;
+    const { prompt, system } = options;
 
     try {
       const recent = repositoryHistoryStore.getRecentRepositories(1);
@@ -61,7 +58,7 @@ export class AIClient {
       // ─── Provider & Model Selection ─────────────────────────────────────────────
 
       const providers = providersStore.get();
-      const enabledProviders = Object.values(providers).filter(p => p.settings.enabled);
+      const enabledProviders = Object.values(providers).filter((p) => p.settings.enabled);
       const activeProvider = enabledProviders[0] || null;
 
       if (!activeProvider) {
@@ -69,7 +66,10 @@ export class AIClient {
       }
 
       const providerName = activeProvider.name;
-      const model = options.model || activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name);
+      const model =
+        options.model ||
+        activeProvider.settings.selectedModel ||
+        (activeProvider.staticModels && activeProvider.staticModels[0]?.name);
       const apiKey = activeProvider.settings.apiKey;
       const baseUrl = activeProvider.settings.baseUrl;
 
@@ -86,9 +86,12 @@ export class AIClient {
           }),
         });
 
-        if (!res.ok) throw new Error(`Ollama generation failed: ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`Ollama generation failed: ${res.status}`);
+        }
 
-        const data = await res.json() as { response: string };
+        const data = (await res.json()) as { response: string };
+
         return { text: data.response };
       }
 
@@ -99,17 +102,17 @@ export class AIClient {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: model || 'model-identifier',
-            messages: [
-              ...(system ? [{ role: 'system', content: system }] : []),
-              { role: 'user', content: prompt }
-            ],
+            messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
             stream: false,
           }),
         });
 
-        if (!res.ok) throw new Error(`LM Studio generation failed: ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`LM Studio generation failed: ${res.status}`);
+        }
 
-        const data = await res.json() as { choices: { message: { content: string } }[] };
+        const data = (await res.json()) as { choices: { message: { content: string } }[] };
+
         return { text: data.choices[0].message.content };
       }
 
@@ -125,6 +128,8 @@ export class AIClient {
         apiKey,
         baseUrl,
       });
+
+      console.log('FULL AI RESPONSE:', JSON.stringify(result, null, 2));
 
       return {
         text: result.reply,

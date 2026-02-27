@@ -80,11 +80,7 @@ export function treeSitterHighlight(lang: SupportedLanguage) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildDecorations(
-  tree: any,
-  language: SupportedLanguage,
-  tsLanguage: any,
-): DecorationSet {
+function buildDecorations(tree: any, language: SupportedLanguage, tsLanguage: any): DecorationSet {
   const ranges = getHighlightRanges(tree, language, tsLanguage);
   const builder = new RangeSetBuilder<Decoration>();
 

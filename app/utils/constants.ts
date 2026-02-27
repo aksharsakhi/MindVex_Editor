@@ -47,9 +47,7 @@ export const PROVIDER_LIST: any[] = [
   },
   {
     name: 'XAI',
-    staticModels: [
-      { name: 'grok-beta', label: 'Grok Beta', provider: 'XAI', maxTokenAllowed: 131072 },
-    ],
+    staticModels: [{ name: 'grok-beta', label: 'Grok Beta', provider: 'XAI', maxTokenAllowed: 131072 }],
     getApiKeyLink: 'https://console.x.ai/',
     labelForGetApiKey: 'Get xAI API Key',
   },

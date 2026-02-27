@@ -98,6 +98,7 @@ export async function getFallbackGraph(): Promise<GraphResponse> {
   const container = await webcontainer;
   const nodes: CyNode[] = [];
   const edges: CyEdge[] = [];
+  const fileNameToPath = new Map<string, string>();
 
   async function walk(dir: string) {
     const entries = await container.fs.readdir(dir, { withFileTypes: true });
@@ -123,38 +124,112 @@ export async function getFallbackGraph(): Promise<GraphResponse> {
             },
           });
 
-          // Simple heuristic for imports (very basic)
-          try {
-            const content = (await container.fs.readFile(fullPath, 'utf-8')) as string;
-            const lines = content.split('\n');
-
-            for (const line of lines) {
-              const importMatch = line.match(/from\s+['"](.+)['"]/);
-
-              if (importMatch) {
-                const target = importMatch[1];
-                // This is a very rough mapping and doesn't resolve paths properly,
-                // but it's a fallback graph.
-                edges.push({
-                  data: {
-                    id: `${fullPath}-${target}`,
-                    source: fullPath,
-                    target: target,
-                    type: 'import',
-                    cycle: false,
-                  },
-                });
-              }
-            }
-          } catch (e) {
-            // Skip files that can't be read
-          }
+          // Register filename -> path map to assist resolving bare imports later
+          fileNameToPath.set(entry.name, fullPath);
         }
       }
     }
   }
 
   await walk('/');
+
+  // Second pass: read each file and try to resolve imports to other files we found
+  for (const node of nodes) {
+    const src = node.data.filePath;
+
+    try {
+      const content = (await container.fs.readFile(src, 'utf-8')) as string;
+
+      const importTargets: string[] = [];
+
+      // Match common import patterns (JS/TS and require)
+      const fromRegex = /from\s+["'](.+?)["']/g;
+      const importRegex = /import\s+(?:.+?\s+from\s+)?["'](.+?)["']/g;
+      const requireRegex = /require\(\s*["'](.+?)["']\s*\)/g;
+      const javaImportRegex = /import\s+([\w\.]+);/g;
+
+      let m: RegExpExecArray | null;
+
+      while ((m = fromRegex.exec(content))) {
+        importTargets.push(m[1]);
+      }
+
+      while ((m = importRegex.exec(content))) {
+        importTargets.push(m[1]);
+      }
+
+      while ((m = requireRegex.exec(content))) {
+        importTargets.push(m[1]);
+      }
+
+      // Java imports: map package.Class to a basename.Class or Class.java
+      while ((m = javaImportRegex.exec(content))) {
+        const pkg = m[1];
+        const parts = pkg.split('.');
+        const className = parts[parts.length - 1];
+        importTargets.push(className);
+      }
+
+      for (const target of importTargets) {
+        let resolvedTarget: string | null = null;
+
+        // Relative paths: resolve against src dir
+        if (target.startsWith('./') || target.startsWith('../')) {
+          const base = pathUtils.dirname(src);
+          const candidate = pathUtils.join(base, target);
+
+          // Try with common extensions
+          const tryExt = ['', '.ts', '.tsx', '.js', '.jsx', '.java', '.py', '.json'];
+
+          for (const ext of tryExt) {
+            const p = candidate + ext;
+
+            try {
+              // try reading to confirm existence
+              await container.fs.readFile(p, 'utf-8');
+              resolvedTarget = p;
+              break;
+            } catch (e) {
+              // continue
+            }
+          }
+        } else {
+          // Bare imports or package-like imports: try to resolve by basename
+          const last = target.split('/').pop() || target;
+
+          // strip extensions if present
+          const baseName = last.replace(/\.(ts|tsx|js|jsx|java|py)$/, '');
+
+          // direct filename match
+          if (fileNameToPath.has(last)) {
+            resolvedTarget = fileNameToPath.get(last)!;
+          } else if (fileNameToPath.has(baseName + '.ts')) {
+            resolvedTarget = fileNameToPath.get(baseName + '.ts') || null;
+          } else if (fileNameToPath.has(baseName + '.java')) {
+            resolvedTarget = fileNameToPath.get(baseName + '.java') || null;
+          } else if (fileNameToPath.has(baseName + '.js')) {
+            resolvedTarget = fileNameToPath.get(baseName + '.js') || null;
+          } else if (fileNameToPath.has(baseName)) {
+            resolvedTarget = fileNameToPath.get(baseName) || null;
+          }
+        }
+
+        if (resolvedTarget) {
+          edges.push({
+            data: {
+              id: `${src}->${resolvedTarget}`,
+              source: src,
+              target: resolvedTarget,
+              type: 'import',
+              cycle: false,
+            },
+          });
+        }
+      }
+    } catch (e) {
+      // skip unreadable files
+    }
+  }
 
   return {
     nodes,

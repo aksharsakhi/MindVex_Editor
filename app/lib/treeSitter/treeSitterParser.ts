@@ -12,22 +12,79 @@ const ParserModule: any = require('web-tree-sitter');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SupportedLanguage = 
-  | 'java' | 'python' | 'typescript' | 'javascript'
-  | 'c' | 'cpp' | 'go' | 'rust' | 'html' | 'css' 
-  | 'json' | 'yaml' | 'markdown' | 'php' | 'ruby'
-  | 'swift' | 'kotlin' | 'dart' | 'lua' | 'shell'
-  | 'sql' | 'xml' | 'dockerfile' | 'makefile' | 'cmake'
-  | 'toml' | 'ini' | 'perl' | 'r' | 'julia'
-  | 'elixir' | 'clojure' | 'haskell' | 'scala' | 'erlang'
-  | 'fsharp' | 'ocaml' | 'scheme' | 'lisp' | 'fortran'
-  | 'matlab' | 'vba' | 'powershell' | 'vim' | 'latex'
-  | 'bibtex' | 'graphql' | 'proto' | 'thrift' | 'capnp'
-  | 'asn1' | 'regex' | 'diff' | 'gitcommit' | 'gitrebase'
-  | 'gitattributes' | 'gitignore' | 'dockerignore' | 'editorconfig'
-  | 'eslintignore' | 'prettierignore' | 'npmignore' | 'yarnignore'
-  | 'pnpmignore' | 'bazel' | 'buck' | 'meson' | 'ninja'
-  | 'gn' | 'gnbuild' | 'gnargs' | 'starlark';
+export type SupportedLanguage =
+  | 'java'
+  | 'python'
+  | 'typescript'
+  | 'javascript'
+  | 'c'
+  | 'cpp'
+  | 'go'
+  | 'rust'
+  | 'html'
+  | 'css'
+  | 'json'
+  | 'yaml'
+  | 'markdown'
+  | 'php'
+  | 'ruby'
+  | 'swift'
+  | 'kotlin'
+  | 'dart'
+  | 'lua'
+  | 'shell'
+  | 'sql'
+  | 'xml'
+  | 'dockerfile'
+  | 'makefile'
+  | 'cmake'
+  | 'toml'
+  | 'ini'
+  | 'perl'
+  | 'r'
+  | 'julia'
+  | 'elixir'
+  | 'clojure'
+  | 'haskell'
+  | 'scala'
+  | 'erlang'
+  | 'fsharp'
+  | 'ocaml'
+  | 'scheme'
+  | 'lisp'
+  | 'fortran'
+  | 'matlab'
+  | 'vba'
+  | 'powershell'
+  | 'vim'
+  | 'latex'
+  | 'bibtex'
+  | 'graphql'
+  | 'proto'
+  | 'thrift'
+  | 'capnp'
+  | 'asn1'
+  | 'regex'
+  | 'diff'
+  | 'gitcommit'
+  | 'gitrebase'
+  | 'gitattributes'
+  | 'gitignore'
+  | 'dockerignore'
+  | 'editorconfig'
+  | 'eslintignore'
+  | 'prettierignore'
+  | 'npmignore'
+  | 'yarnignore'
+  | 'pnpmignore'
+  | 'bazel'
+  | 'buck'
+  | 'meson'
+  | 'ninja'
+  | 'gn'
+  | 'gnbuild'
+  | 'gnargs'
+  | 'starlark';
 
 // Grammar WASM paths — served from /public/ at runtime
 const GRAMMAR_URLS: Record<SupportedLanguage, string> = {
@@ -153,9 +210,11 @@ async function loadLanguage(lang: SupportedLanguage): Promise<any> {
   }
 
   const url = GRAMMAR_URLS[lang];
+
   try {
     const langObj = await ParserModule.Language.load(url);
     languageCache.set(lang, langObj);
+
     return langObj;
   } catch (e) {
     console.error(`Failed to load grammar for ${lang} from ${url}:`, e);
@@ -176,6 +235,7 @@ export async function parse(code: string, lang: SupportedLanguage): Promise<any>
 
   if (!parser) {
     parser = new ParserModule();
+
     const langObj = await loadLanguage(lang);
     parser.setLanguage(langObj);
     parserInstances.set(lang, parser);
@@ -191,61 +251,105 @@ export function getLanguageFromExtension(filePath: string): SupportedLanguage | 
   const ext = filePath.split('.').pop()?.toLowerCase();
 
   switch (ext) {
-    case 'java': return 'java';
-    case 'py': return 'python';
+    case 'java':
+      return 'java';
+    case 'py':
+      return 'python';
     case 'ts':
-    case 'tsx': return 'typescript';
+    case 'tsx':
+      return 'typescript';
     case 'js':
-    case 'jsx': return 'javascript';
+    case 'jsx':
+      return 'javascript';
     case 'c':
-    case 'h': return 'c';
+    case 'h':
+      return 'c';
     case 'cpp':
     case 'cc':
     case 'cxx':
-    case 'hpp': return 'cpp';
-    case 'go': return 'go';
-    case 'rs': return 'rust';
+    case 'hpp':
+      return 'cpp';
+    case 'go':
+      return 'go';
+    case 'rs':
+      return 'rust';
     case 'html':
-    case 'htm': return 'html';
-    case 'css': return 'css';
-    case 'json': return 'json';
+    case 'htm':
+      return 'html';
+    case 'css':
+      return 'css';
+    case 'json':
+      return 'json';
     case 'yaml':
-    case 'yml': return 'yaml';
+    case 'yml':
+      return 'yaml';
     case 'md':
-    case 'markdown': return 'markdown';
-    case 'php': return 'php';
-    case 'rb': return 'ruby';
-    case 'swift': return 'swift';
-    case 'kt': return 'kotlin';
-    case 'dart': return 'dart';
-    case 'lua': return 'lua';
+    case 'markdown':
+      return 'markdown';
+    case 'php':
+      return 'php';
+    case 'rb':
+      return 'ruby';
+    case 'swift':
+      return 'swift';
+    case 'kt':
+      return 'kotlin';
+    case 'dart':
+      return 'dart';
+    case 'lua':
+      return 'lua';
     case 'sh':
-    case 'bash': return 'shell';
-    case 'sql': return 'sql';
-    case 'xml': return 'xml';
-    case 'toml': return 'toml';
-    case 'ini': return 'ini';
-    case 'pl': return 'perl';
-    case 'r': return 'r';
-    case 'jl': return 'julia';
+    case 'bash':
+      return 'shell';
+    case 'sql':
+      return 'sql';
+    case 'xml':
+      return 'xml';
+    case 'toml':
+      return 'toml';
+    case 'ini':
+      return 'ini';
+    case 'pl':
+      return 'perl';
+    case 'r':
+      return 'r';
+    case 'jl':
+      return 'julia';
     case 'ex':
-    case 'exs': return 'elixir';
-    case 'clj': return 'clojure';
-    case 'hs': return 'haskell';
-    case 'scala': return 'scala';
-    case 'erl': return 'erlang';
-    case 'fs': return 'fsharp';
-    case 'ml': return 'ocaml';
-    case 'scm': return 'scheme';
-    case 'lisp': return 'lisp';
+    case 'exs':
+      return 'elixir';
+    case 'clj':
+      return 'clojure';
+    case 'hs':
+      return 'haskell';
+    case 'scala':
+      return 'scala';
+    case 'erl':
+      return 'erlang';
+    case 'fs':
+      return 'fsharp';
+    case 'ml':
+      return 'ocaml';
+    case 'scm':
+      return 'scheme';
+    case 'lisp':
+      return 'lisp';
     case 'f':
-    case 'f90': return 'fortran';
-    case 'm': return 'matlab';
-    case 'ps1': return 'powershell';
-    case 'vim': return 'vim';
-    case 'tex': return 'latex';
-    case 'graphql': return 'graphql';
-    case 'proto': return 'proto';
-    default: return null;
+    case 'f90':
+      return 'fortran';
+    case 'm':
+      return 'matlab';
+    case 'ps1':
+      return 'powershell';
+    case 'vim':
+      return 'vim';
+    case 'tex':
+      return 'latex';
+    case 'graphql':
+      return 'graphql';
+    case 'proto':
+      return 'proto';
+    default:
+      return null;
   }
 }

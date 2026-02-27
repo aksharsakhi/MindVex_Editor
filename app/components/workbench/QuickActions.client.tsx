@@ -137,11 +137,13 @@ export function QuickActions() {
     };
 
     window.addEventListener('open-tool', handleOpenTool);
+
     return () => window.removeEventListener('open-tool', handleOpenTool);
   }, []);
 
   const handleBackToMenu = () => {
     setActiveToolId(null);
+    workbenchStore.currentView.set('dashboard');
   };
 
   const handleRefreshGraph = () => {
@@ -199,9 +201,8 @@ export function QuickActions() {
                 clipRule="evenodd"
               />
             </svg>
-            {activeToolId ? 'Back to Tools' : 'Back to Dashboard'}
+            Back to Dashboard
           </button>
-
           <div className="flex items-center gap-4">
             {/* Status Indicator */}
             <div className="flex items-center gap-2">
@@ -282,7 +283,9 @@ export function QuickActions() {
                   onClick={() => handleActionClick(action.id)}
                   className="group relative bg-gray-800/50 border border-gray-700 rounded-2xl p-6 text-left hover:bg-gray-700/50 hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                 >
-                  <div className={`absolute top-0 right-0 w-24 h-24 bg-${action.color}-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500`} />
+                  <div
+                    className={`absolute top-0 right-0 w-24 h-24 bg-${action.color}-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500`}
+                  />
 
                   <div className="flex flex-col h-full relative z-10">
                     <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 w-fit">
@@ -291,13 +294,22 @@ export function QuickActions() {
                     <h3 className="text-xl font-bold mb-2 text-white group-hover:text-blue-400 transition-colors">
                       {action.title}
                     </h3>
-                    <p className="text-gray-400 text-sm mb-6 flex-1">
-                      {action.description}
-                    </p>
+                    <p className="text-gray-400 text-sm mb-6 flex-1">{action.description}</p>
                     <div className="flex items-center text-blue-400 text-sm font-semibold">
                       Open Tool
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M14 5l7 7m0 0l-7 7m7-7H3"
+                        />
                       </svg>
                     </div>
                   </div>

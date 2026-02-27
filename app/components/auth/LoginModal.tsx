@@ -3,7 +3,9 @@ import { Dialog, DialogRoot } from '~/components/ui/Dialog';
 import { GitHubButton } from './GitHubButton';
 import { classNames } from '~/utils/classNames';
 import { setAuth } from '~/lib/stores/authStore';
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+
+// Force relative API path to use local proxy
+const API_BASE_URL = '/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -17,11 +19,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canSubmit = email.trim().length > 3 && password.trim().length >= 6 && (isSignUp ? fullName.trim().length > 0 : true);
+  const canSubmit =
+    email.trim().length > 3 && password.trim().length >= 6 && (isSignUp ? fullName.trim().length > 0 : true);
   const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) return;
+    if (!canSubmit || isSubmitting) {
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
+
     try {
       const path = isSignUp ? '/auth/register' : '/auth/login';
       const body = isSignUp ? { email, password, fullName } : { email, password };
@@ -30,16 +37,17 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      const data = (await res.json()) as { token?: string; refreshToken?: string; user?: any; message?: string };
+
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Request failed');
+        throw new Error(data?.message || `Request failed (${res.status})`);
       }
-      const data = (await res.json()) as { token?: string; user?: any };
+
       if (data?.token && data?.user) {
         setAuth(data.token, data.user);
         onClose?.();
       } else {
-        throw new Error('Invalid response');
+        throw new Error('Invalid response: missing token or user');
       }
     } catch (e: any) {
       setError(e?.message || 'Failed');
@@ -114,7 +122,13 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               onClick={handleSubmit}
               className="w-full py-3 mt-4 rounded-lg font-semibold text-sm transition-colors text-orange-500 bg-[#1c140a] border border-orange-500/20 hover:bg-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(249,115,22,0.1)]"
             >
-              {isSignUp ? (isSubmitting ? 'Creating account...' : 'Sign Up') : (isSubmitting ? 'Signing in...' : 'Sign In')}
+              {isSignUp
+                ? isSubmitting
+                  ? 'Creating account...'
+                  : 'Sign Up'
+                : isSubmitting
+                  ? 'Signing in...'
+                  : 'Sign In'}
             </button>
             {error && <div className="text-red-400 text-xs mt-2">{error}</div>}
           </form>

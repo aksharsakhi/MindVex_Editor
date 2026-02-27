@@ -53,8 +53,8 @@ export function ChatHistory({
   // Filter and sort chat history
   const allChats = chatHistory.filter(
     (chat) =>
-      chat.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chat.urlId?.toLowerCase().includes(searchTerm.toLowerCase()),
+      (chat?.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (chat?.urlId || '').toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Sort chats by timestamp (newest first)

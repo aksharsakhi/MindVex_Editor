@@ -95,19 +95,25 @@ const LLMAnalysisSchema = z.object({
     issues: z.array(z.string()),
     strengths: z.array(z.string()),
   }),
-  graph: z.object({
-    nodes: z.array(z.object({
-      id: z.string(),
-      label: z.string(),
-      type: z.string(),
-    })),
-    edges: z.array(z.object({
-      source: z.string(),
-      target: z.string(),
-      type: z.string(),
-      strength: z.number().optional(),
-    })),
-  }).optional(),
+  graph: z
+    .object({
+      nodes: z.array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          type: z.string(),
+        }),
+      ),
+      edges: z.array(
+        z.object({
+          source: z.string(),
+          target: z.string(),
+          type: z.string(),
+          strength: z.number().optional(),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 export class UnifiedParserService {
@@ -130,17 +136,18 @@ export class UnifiedParserService {
 
   async parseCode(code: string, filePath: string): Promise<EnhancedParseResult> {
     const language = this.parser.getLanguageFromExtension(filePath);
+
     if (!language) {
       throw new Error(`Unsupported file type: ${filePath}`);
     }
 
     const startTime = Date.now();
-    
+
     // Parse with tree-sitter
     const parseResult = await this.parser.parse(code, language, filePath);
-    
+
     let llmAnalysis: LLMAnalysis | undefined;
-    
+
     // Perform LLM analysis if in LLM-enhanced mode
     if (this.mode.type === 'llm-enhanced') {
       llmAnalysis = await this.performLLMAnalysis(code, parseResult.metadata, filePath, language);
@@ -158,7 +165,7 @@ export class UnifiedParserService {
   async parseProject(files: Array<{ path: string; content: string }>): Promise<ProjectAnalysis> {
     const startTime = Date.now();
     const results: EnhancedParseResult[] = [];
-    
+
     // Parse all files
     for (const file of files) {
       try {
@@ -171,9 +178,9 @@ export class UnifiedParserService {
 
     // Calculate project metadata
     const projectMetadata = this.calculateProjectMetadata(results);
-    
+
     let llmAnalysis: LLMAnalysis | undefined;
-    
+
     // Perform project-level LLM analysis if in LLM-enhanced mode
     if (this.mode.type === 'llm-enhanced') {
       llmAnalysis = await this.performProjectLLMAnalysis(results, projectMetadata);
@@ -194,28 +201,28 @@ export class UnifiedParserService {
     const complexities: number[] = [];
     const dependencies = new Set<string>();
 
-    results.forEach(result => {
+    results.forEach((result) => {
       // Count languages
       languages[result.language] = (languages[result.language] || 0) + 1;
-      
+
       // Count lines and code elements
       totalLines += result.metadata.linesOfCode;
       totalFunctions += result.metadata.functions.length;
       totalClasses += result.metadata.classes.length;
-      
+
       // Collect complexity scores
-      result.metadata.functions.forEach(func => {
+      result.metadata.functions.forEach((func) => {
         complexities.push(func.complexity);
       });
-      
+
       // Collect dependencies
-      result.metadata.imports.forEach(imp => {
+      result.metadata.imports.forEach((imp) => {
         dependencies.add(imp.module);
       });
     });
 
     const complexityValues = complexities.length > 0 ? complexities : [0];
-    
+
     return {
       totalFiles: results.length,
       totalLines,
@@ -231,7 +238,12 @@ export class UnifiedParserService {
     };
   }
 
-  private async performLLMAnalysis(code: string, metadata: ParseResult['metadata'], filePath: string, language: string): Promise<LLMAnalysis> {
+  private async performLLMAnalysis(
+    code: string,
+    metadata: ParseResult['metadata'],
+    filePath: string,
+    language: string,
+  ): Promise<LLMAnalysis> {
     if (this.mode.type !== 'llm-enhanced') {
       throw new Error('LLM analysis not available in parser-only mode');
     }
@@ -255,20 +267,22 @@ Lines: ${metadata.linesOfCode}`;
 }
 Only return the JSON object, no other text.`;
 
-      const response = await this.aiClient.analyzeCode(code, context, { 
+      const response = await this.aiClient.analyzeCode(code, context, {
         system,
         model: this.mode.model,
         temperature: this.mode.temperature,
-        maxTokens: this.mode.maxTokens
+        maxTokens: this.mode.maxTokens,
       });
-      
+
       try {
         // Clean the response text to extract only JSON
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+
         if (jsonMatch) {
           const analysis = JSON.parse(jsonMatch[0]);
           return LLMAnalysisSchema.parse(analysis);
         }
+
         throw new Error('No JSON found in AI response');
       } catch (e) {
         console.warn('AI response parsing failed, using mock data:', e);
@@ -280,21 +294,27 @@ Only return the JSON object, no other text.`;
     }
   }
 
-  private async performProjectLLMAnalysis(results: EnhancedParseResult[], projectMetadata: ProjectAnalysis['projectMetadata']): Promise<LLMAnalysis> {
+  private async performProjectLLMAnalysis(
+    results: EnhancedParseResult[],
+    projectMetadata: ProjectAnalysis['projectMetadata'],
+  ): Promise<LLMAnalysis> {
     if (this.mode.type !== 'llm-enhanced') {
       throw new Error('LLM analysis not available in parser-only mode');
     }
 
     try {
-      const fileList = results.map(r => r.filePath).join('\n');
-      
+      const fileList = results.map((r) => r.filePath).join('\n');
+
       // Extract relationships found by AST parser to guide the LLM
-      const astRelationships = results.flatMap(r => 
-        r.metadata.imports.map(imp => {
-          const target = results.find(f => f.filePath.includes(imp.module) || imp.module.includes(f.filePath));
-          return target ? `${r.filePath} -> ${target.filePath} (${imp.symbols.join(', ')})` : null;
-        })
-      ).filter(Boolean).join('\n');
+      const astRelationships = results
+        .flatMap((r) =>
+          r.metadata.imports.map((imp) => {
+            const target = results.find((f) => f.filePath.includes(imp.module) || imp.module.includes(f.filePath));
+            return target ? `${r.filePath} -> ${target.filePath} (${imp.symbols.join(', ')})` : null;
+          }),
+        )
+        .filter(Boolean)
+        .join('\n');
 
       const context = `Project Summary:
 Files: ${projectMetadata.totalFiles}
@@ -319,77 +339,111 @@ TASK:
    - Each edge MUST have a valid "source" and "target" from the File List.
    - Do not invent files. Use the full paths provided.`;
 
-      const system = `You are a static code architecture analyzer. 
+      const system = `You are a senior software architect.
 
-Your task is to generate a COMPLETE architectural knowledge graph of the project in JSON format.
+Return ONLY valid JSON.
 
-STRICT REQUIREMENTS:
-1. You MUST include:
-   - ALL files from the File List as nodes.
-   - ALL detected and inferred relationships as edges.
+Do NOT include explanations.
+Do NOT include markdown.
+Do NOT include text outside JSON.
+Do NOT wrap in backticks.
 
-2. Edge types MUST include:
-   - import (strength: 1)
-   - dependency_injection (strength: 3)
-   - implements (strength: 2)
-   - extends (strength: 2)
-   - calls (strength: 2)
-   - references (strength: 1)
-   - controller_service_link (strength: 4)
-   - service_repository_link (strength: 4)
+Output format:
 
-3. Every edge MUST contain:
-   { 
-     "source": "<exact full file path from File List>", 
-     "target": "<exact full file path from File List>", 
-     "type": "<relationship type>", 
-     "strength": <number>
-   }
-
-4. DO NOT omit edges even if uncertain. If File A logically depends on File B (e.g., Controller -> Service -> Entity), you MUST infer and include these links to ensure the graph is connected.
-5. Every node MUST have the exact ID from the File List.
-6. The graph should form architectural clusters. Isolated nodes should be connected via logical relationships if possible.
-7. Output STRICT VALID JSON only.
-
-JSON Schema:
 {
-  "summary": "string",
-  "patterns": [{ "type": "string", "name": "string", "line": number, "description": "string", "severity": "info" | "warning" | "error" }],
-  "recommendations": ["string"],
-  "complexity": { "score": number, "factors": ["string"] },
-  "architecture": { "type": "string", "patterns": ["string"], "issues": ["string"] },
-  "quality": { "score": number, "issues": ["string"], "strengths": ["string"] },
+  "summary": "High-level architectural summary...",
+  "patterns": [],
+  "recommendations": [],
+  "complexity": { "score": 0, "factors": [] },
+  "architecture": { "type": "", "patterns": [], "issues": [] },
+  "quality": { "score": 0, "issues": [], "strengths": [] },
   "graph": {
-    "nodes": [{ "id": "string", "label": "string", "type": "file" | "module" }],
-    "edges": [{ "source": "string", "target": "string", "type": "string", "strength": number }]
+    "nodes": [
+      {
+        "id": "src/services/AuthService.ts",
+        "label": "Auth Service",
+        "type": "service",
+        "layer": "backend"
+      }
+    ],
+    "edges": [
+      {
+        "source": "src/client/App.tsx",
+        "target": "src/services/AuthService.ts",
+        "type": "dependency",
+        "strength": 1
+      }
+    ]
   }
 }
 
-Only return JSON.`;
+Rules:
+- Group related files into logical services
+- Allowed layers:
+  frontend
+  backend
+  data
+  external
+  infrastructure
+- Use exact file paths for node IDs
+- If unsure, infer logical architecture
+- Must always return nodes and edges arrays inside graph object
+`;
 
-      const response = await this.aiClient.generate({ 
-        prompt: context, 
+      console.log('Sending AI request...');
+
+      const response = await this.aiClient.generate({
+        prompt: context,
         system,
         model: this.mode.model,
-        temperature: 0.1, // Lower temperature for more consistent JSON
-        maxTokens: this.mode.maxTokens
+        temperature: 0, // Strict deterministic output
+        maxTokens: this.mode.maxTokens,
       });
-      
-      console.log('AI Project Analysis Response:', response.text);
-      
+
+      console.log('RAW AI RESPONSE:', response.text);
+
       try {
         // Clean the response text to extract only JSON
         let jsonStr = response.text.trim();
+
+        // Try to extract from code blocks first
         if (jsonStr.includes('```json')) {
           jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
         } else if (jsonStr.includes('```')) {
           jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
+        } else {
+          // If no code blocks, try to find the JSON object directly
+          const firstBrace = jsonStr.indexOf('{');
+          const lastBrace = jsonStr.lastIndexOf('}');
+
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+          }
         }
 
-        const analysis = JSON.parse(jsonStr);
-        console.log('Parsed AI Analysis:', analysis);
-        
-        const validated = LLMAnalysisSchema.parse(analysis);
+        let parsed;
+
+        try {
+          parsed = JSON.parse(jsonStr);
+        } catch (err) {
+          console.error('AI JSON parsing failed:', response.text);
+          return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+        }
+
+        if (!parsed.graph || !parsed.graph.nodes || !parsed.graph.edges) {
+          console.error('AI returned invalid structure:', parsed);
+          return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+        }
+
+        console.log('Parsed AI Analysis:', parsed);
+
+        /*
+         * Ensure validation doesn't fail on missing optional fields if any
+         * We might need to map it to match LLMAnalysisSchema strictness or loosen schema
+         * For now, assuming schema matches output format
+         */
+
+        const validated = LLMAnalysisSchema.parse(parsed);
         console.log('Validated AI Analysis:', validated);
 
         return validated;
@@ -399,13 +453,19 @@ Only return JSON.`;
       }
     } catch (error) {
       console.error('Project LLM analysis failed:', error);
-      return this.generateFallbackProjectLLMAnalysis(projectMetadata);
+
+      // Fallback to AST-based graph generation so the user always sees a graph
+      return this.generateMockProjectLLMAnalysis(results, projectMetadata);
     }
   }
 
   private generateMockLLMAnalysis(code: string, metadata: ParseResult['metadata'], filePath: string): LLMAnalysis {
-    const complexityScore = Math.min(100, metadata.functions.reduce((sum, func) => sum + func.complexity, 0) / Math.max(1, metadata.functions.length) * 10);
-    
+    const complexityScore = Math.min(
+      100,
+      (metadata.functions.reduce((sum, func) => sum + func.complexity, 0) / Math.max(1, metadata.functions.length)) *
+        10,
+    );
+
     return {
       summary: `Analysis of ${filePath} reveals a ${metadata.functions.length > 0 ? 'well-structured' : 'simple'} codebase with ${metadata.functions.length} functions and ${metadata.classes.length} classes.`,
       patterns: [
@@ -445,10 +505,45 @@ Only return JSON.`;
     };
   }
 
-  private generateMockProjectLLMAnalysis(results: EnhancedParseResult[], projectMetadata: ProjectAnalysis['projectMetadata']): LLMAnalysis {
+  private generateMockProjectLLMAnalysis(
+    results: EnhancedParseResult[],
+    projectMetadata: ProjectAnalysis['projectMetadata'],
+  ): LLMAnalysis {
     const complexityScore = projectMetadata.complexity.average * 10;
     const languageCount = Object.keys(projectMetadata.languages).length;
-    
+
+    // Generate graph nodes and edges from AST results
+    const nodes: { id: string; label: string; type: string }[] = [];
+    const edges: { source: string; target: string; type: string; strength: number }[] = [];
+    const nodeSet = new Set<string>();
+
+    results.forEach((file) => {
+      // Add file node
+      if (!nodeSet.has(file.filePath)) {
+        nodes.push({
+          id: file.filePath,
+          label: file.filePath.split('/').pop() || file.filePath,
+          type: 'file',
+        });
+        nodeSet.add(file.filePath);
+      }
+
+      // Add edges from imports
+      file.metadata.imports.forEach((imp) => {
+        // Simple resolution strategy: look for file path ending with module name
+        const target = results.find((f) => f.filePath.includes(imp.module) || imp.module.includes(f.filePath));
+
+        if (target) {
+          edges.push({
+            source: file.filePath,
+            target: target.filePath,
+            type: 'import',
+            strength: 1,
+          });
+        }
+      });
+    });
+
     return {
       summary: `Project analysis shows ${projectMetadata.totalFiles} files across ${languageCount} languages with ${projectMetadata.totalFunctions} functions and ${projectMetadata.totalClasses} classes.`,
       patterns: [
@@ -484,6 +579,10 @@ Only return JSON.`;
           `Multi-language support with ${languageCount} languages`,
           `${projectMetadata.totalFiles} files analyzed`,
         ],
+      },
+      graph: {
+        nodes,
+        edges,
       },
     };
   }
@@ -549,5 +648,6 @@ export async function getUnifiedParser(): Promise<UnifiedParserService> {
     const parser = await getTreeSitterParser();
     unifiedParserService = new UnifiedParserService(parser);
   }
+
   return unifiedParserService;
 }

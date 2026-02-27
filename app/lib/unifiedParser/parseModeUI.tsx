@@ -1,16 +1,16 @@
 import React from 'react';
 import { useStore } from '@nanostores/react';
-import { 
-  parseModeStore, 
-  toggleParseMode, 
-  isParserOnlyMode, 
-  isLLMEnhancedMode, 
-  getCurrentModel, 
-  updateModel, 
-  getAvailableModels, 
-  setLLMEnhancedMode, 
+import {
+  parseModeStore,
+  toggleParseMode,
+  isParserOnlyMode,
+  isLLMEnhancedMode,
+  getCurrentModel,
+  updateModel,
+  getAvailableModels,
+  setLLMEnhancedMode,
   setParserOnlyMode,
-  DEFAULT_CONFIG 
+  DEFAULT_CONFIG,
 } from './parseModeStore';
 import { Switch } from '~/components/ui/Switch';
 import { Button } from '~/components/ui/Button';
@@ -38,29 +38,26 @@ export function ParseModeToggle({ showLabels = true, className = '' }: ParseMode
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Switch
-        checked={!isParserOnly}
-        onCheckedChange={() => toggleParseMode()}
-      />
-      {showLabels && (
-        <span className="text-sm font-medium">
-          {isParserOnly ? 'Parser Only' : 'LLM Enhanced'}
-        </span>
-      )}
+      <Switch checked={!isParserOnly} onCheckedChange={() => toggleParseMode()} />
+      {showLabels && <span className="text-sm font-medium">{isParserOnly ? 'Parser Only' : 'LLM Enhanced'}</span>}
     </div>
   );
 }
 
-export function ParseModeSelector({ compact = false, showModelSelector = true, className = '' }: ParseModeSelectorProps) {
+export function ParseModeSelector({
+  compact = false,
+  showModelSelector = true,
+  className = '',
+}: ParseModeSelectorProps) {
   const parseMode = useStore(parseModeStore);
   const providers = useStore(providersStore);
-  
+
   const isLLMMode = isLLMEnhancedMode();
   const currentModel = getCurrentModel();
-  
-  const enabledProvider = Object.values(providers).find(p => p.settings.enabled);
-  const availableModels = enabledProvider 
-    ? (enabledProvider.staticModels?.map(m => m.name) || DEFAULT_CONFIG.availableModels)
+
+  const enabledProvider = Object.values(providers).find((p) => p.settings.enabled);
+  const availableModels = enabledProvider
+    ? enabledProvider.staticModels?.map((m) => m.name) || DEFAULT_CONFIG.availableModels
     : DEFAULT_CONFIG.availableModels;
 
   const handleModelChange = (model: string) => {
@@ -106,10 +103,10 @@ export function ParseModeSelector({ compact = false, showModelSelector = true, c
 export function ParseModeStatus() {
   const parseMode = useStore(parseModeStore);
   const providers = useStore(providersStore);
-  
+
   const isParserOnly = parseMode.type === 'parser-only';
-  
-  const enabledProvider = Object.values(providers).find(p => p.settings.enabled);
+
+  const enabledProvider = Object.values(providers).find((p) => p.settings.enabled);
   const providerName = enabledProvider?.name || 'Local';
   const modelName = parseMode.type === 'llm-enhanced' ? parseMode.model : 'AST Only';
 
@@ -123,7 +120,9 @@ export function ParseModeStatus() {
       ) : (
         <>
           <Brain className="h-3 w-3 text-purple-500" />
-          <span>AI Enhanced ({providerName}: {modelName})</span>
+          <span>
+            AI Enhanced ({providerName}: {modelName})
+          </span>
         </>
       )}
     </div>
@@ -197,9 +196,9 @@ export function ParseModeConfig({ className = '' }: ParseModeConfigProps) {
       <div className="p-3 rounded-lg bg-mindvex-elements-background-depth-1 border border-mindvex-elements-borderColor flex gap-3">
         <Info className="h-4 w-4 text-mindvex-elements-textTertiary shrink-0 mt-0.5" />
         <p className="text-xs text-mindvex-elements-textSecondary">
-          {parseMode.type === 'parser-only' 
-            ? "Local parsing uses Tree-sitter for instant AST-based analysis. No data leaves your machine."
-            : "LLM mode sends AST metadata to the selected model for deeper semantic insights, pattern recognition, and architectural analysis."}
+          {parseMode.type === 'parser-only'
+            ? 'Local parsing uses Tree-sitter for instant AST-based analysis. No data leaves your machine.'
+            : 'LLM mode sends AST metadata to the selected model for deeper semantic insights, pattern recognition, and architectural analysis.'}
         </p>
       </div>
     </div>

@@ -9,12 +9,12 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import { getBlame, type BlameLine, getAiChurnSummary } from '~/lib/analytics/blameClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -34,7 +34,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [inputPath, setInputPath] = useState(filePath || '');
   const [repoUrl, setRepoUrl] = useState('');
-  
+
   const parseMode = useStore(parseModeStore);
   const [llmAnalysis, setLlmAnalysis] = useState<LLMAnalysis | null>(null);
 
@@ -59,7 +59,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
     try {
       const data = await getBlame(repoUrl, path);
       setBlameData(data);
-      
+
       // If in LLM mode, automatically trigger AI analysis
       if (parseMode.type === 'llm-enhanced' && data.length > 0) {
         handleAiAnalysis(path, data);
@@ -92,17 +92,34 @@ export function EvolutionaryBlame({ filePath }: Props) {
     try {
       // Get the unified parser for deeper analysis
       const unifiedParser = await getUnifiedParser();
-      
+
       // Combine file content from blame lines
-      const content = data.map(l => l.content).join('\n');
-      const analysis = await unifiedParser.parseCode(content, path);
-      
+      const content = data.map((l) => l.content).join('\n');
+
+      // Calculate blame statistics for context
+      const authors = new Set(data.map((l) => l.authorEmail || 'Unknown'));
+      const dates = data.map((l) => new Date(l.committedAt).getTime());
+      const oldestDate = new Date(Math.min(...dates));
+      const newestDate = new Date(Math.max(...dates));
+
+      const blameContext = `// Evolutionary Blame Context:
+// Authors: ${Array.from(authors).join(', ')}
+// Time Range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}
+// Total Lines: ${data.length}
+// 
+// Task: Analyze the code evolution. Identify if multiple authors have contributed to complex sections, suggesting potential technical debt or knowledge silos.
+`;
+
+      const codeWithContext = blameContext + '\n' + content;
+
+      const analysis = await unifiedParser.parseCode(codeWithContext, path);
+
       setLlmAnalysis(analysis.llmAnalysis || null);
-      
+
       // Also get the standard churn summary
       const summary = await getAiChurnSummary(repoUrl, path, 0, data.length, 12);
       setAiSummary(summary);
-      
+
       toast.success('Evolutionary AI analysis completed');
     } catch (error) {
       console.error('AI blame analysis failed:', error);
@@ -116,10 +133,22 @@ export function EvolutionaryBlame({ filePath }: Props) {
     const age = Date.now() - new Date(dateStr).getTime();
     const days = age / (1000 * 60 * 60 * 24);
 
-    if (days < 7) return '#22C55E'; // green
-    if (days < 30) return '#3B82F6'; // blue
-    if (days < 90) return '#A855F7'; // purple
-    if (days < 365) return '#F97316'; // orange
+    if (days < 7) {
+      return '#22C55E';
+    } // green
+
+    if (days < 30) {
+      return '#3B82F6';
+    } // blue
+
+    if (days < 90) {
+      return '#A855F7';
+    } // purple
+
+    if (days < 365) {
+      return '#F97316';
+    } // orange
+
     return '#6B7280'; // gray
   };
 
@@ -190,7 +219,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
               <span className="w-2 h-2 rounded-full bg-gray-500"></span> 1y+
             </span>
           </div>
-          
+
           <div className="flex items-center gap-3 ml-auto">
             <Badge variant="outline" className="text-[10px] h-5 py-0">
               <User className="h-2.5 w-2.5 mr-1" /> {uniqueAuthors.length} Authors
@@ -213,7 +242,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
               <p className="leading-relaxed opacity-90">{aiSummary}</p>
             </div>
           )}
-          
+
           {llmAnalysis && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs">
@@ -222,10 +251,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500" 
-                      style={{ width: `${llmAnalysis.quality.score}%` }} 
-                    />
+                    <div className="h-full bg-blue-500" style={{ width: `${llmAnalysis.quality.score}%` }} />
                   </div>
                   <span className="font-mono">{llmAnalysis.quality.score.toFixed(0)}%</span>
                 </div>
@@ -236,10 +262,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-orange-500" 
-                      style={{ width: `${llmAnalysis.complexity.score}%` }} 
-                    />
+                    <div className="h-full bg-orange-500" style={{ width: `${llmAnalysis.complexity.score}%` }} />
                   </div>
                   <span className="font-mono">{llmAnalysis.complexity.score.toFixed(0)}/100</span>
                 </div>

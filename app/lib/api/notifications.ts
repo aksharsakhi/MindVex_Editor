@@ -23,8 +23,8 @@ export const getNotifications = async (): Promise<Notification[]> => {
     .filter((log) => log.category !== 'system') // Filter out system logs
     .map((log) => ({
       id: log.id,
-      title: (log.details?.title as string) || log.message.split('\n')[0],
-      message: log.message,
+      title: (log.details?.title as string) || (log.message ? log.message.split('\n')[0] : 'Untitled'),
+      message: log.message || '',
       type: log.level as 'info' | 'warning' | 'error' | 'success',
       timestamp: log.timestamp,
       read: logStore.isRead(log.id),

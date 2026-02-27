@@ -9,12 +9,12 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import { mcpGetWiki, mcpDescribeModule } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -30,7 +30,7 @@ export function LivingWiki() {
   const [moduleInput, setModuleInput] = useState('');
   const [moduleDesc, setModuleDesc] = useState<string | null>(null);
   const [moduleLoading, setModuleLoading] = useState(false);
-  
+
   const parseMode = useStore(parseModeStore);
   const [enhancedWikiData, setEnhancedWikiData] = useState<LLMAnalysis | null>(null);
 
@@ -55,11 +55,12 @@ export function LivingWiki() {
       // Primary wiki generation via MCP
       const res = await mcpGetWiki(repoUrl);
       setWikiContent(res.content);
-      
+
       // If in LLM mode, perform additional deep analysis
       if (parseMode.type === 'llm-enhanced') {
         try {
           const unifiedParser = await getUnifiedParser();
+
           // Analyze a representative file or project structure
           const analysis = await unifiedParser.parseCode(res.content, 'markdown');
           setEnhancedWikiData(analysis.llmAnalysis || null);
@@ -127,7 +128,10 @@ export function LivingWiki() {
             <span>
               {parts.map((part, j) =>
                 j % 2 === 1 ? (
-                  <code key={j} className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono border border-white/5">
+                  <code
+                    key={j}
+                    className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono border border-white/5"
+                  >
                     {part}
                   </code>
                 ) : (
@@ -139,7 +143,9 @@ export function LivingWiki() {
         );
       }
 
-      if (line.startsWith('```')) return null;
+      if (line.startsWith('```')) {
+        return null;
+      }
 
       if (line.startsWith('**')) {
         return (
@@ -149,7 +155,9 @@ export function LivingWiki() {
         );
       }
 
-      if (line.trim() === '') return <div key={i} className="h-2" />;
+      if (line.trim() === '') {
+        return <div key={i} className="h-2" />;
+      }
 
       return (
         <p key={i} className="text-gray-400 text-sm leading-relaxed mb-1">
@@ -213,7 +221,7 @@ export function LivingWiki() {
             {moduleLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Describe Module'}
           </Button>
         </div>
-        
+
         {moduleDesc && (
           <Card className="p-4 bg-purple-500/5 border-purple-500/20 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center justify-between mb-2">
@@ -221,7 +229,14 @@ export function LivingWiki() {
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
                 {moduleInput}
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => setModuleDesc(null)} className="h-6 w-6 p-0 text-gray-500">×</Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setModuleDesc(null)}
+                className="h-6 w-6 p-0 text-gray-500"
+              >
+                ×
+              </Button>
             </div>
             <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{moduleDesc}</div>
           </Card>
@@ -247,7 +262,7 @@ export function LivingWiki() {
                 {renderMarkdown(wikiContent)}
               </Card>
             </div>
-            
+
             <div className="space-y-6">
               {enhancedWikiData && (
                 <Card className="bg-blue-500/5 border-blue-500/10 p-6 rounded-2xl">
@@ -255,22 +270,24 @@ export function LivingWiki() {
                     <Brain className="h-5 w-5" />
                     <h3 className="font-bold uppercase tracking-widest text-xs">AI Architecture Insights</h3>
                   </div>
-                  <p className="text-sm text-gray-300 italic mb-4 leading-relaxed">
-                    "{enhancedWikiData.summary}"
-                  </p>
-                  
+                  <p className="text-sm text-gray-300 italic mb-4 leading-relaxed">"{enhancedWikiData.summary}"</p>
+
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-500 uppercase mb-2">Key Patterns</h4>
                       <div className="flex flex-wrap gap-1">
                         {enhancedWikiData.architecture.patterns.map((p, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-blue-500/10 border-blue-500/20 text-blue-300 text-[10px]">
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="bg-blue-500/10 border-blue-500/20 text-blue-300 text-[10px]"
+                          >
                             {p}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="text-[10px] font-bold text-gray-500 uppercase mb-2">Recommendations</h4>
                       <ul className="space-y-2">
@@ -285,14 +302,18 @@ export function LivingWiki() {
                   </div>
                 </Card>
               )}
-              
+
               <Card className="bg-[#111] border-white/5 p-6 rounded-2xl">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Table of Contents</h3>
                 <nav className="space-y-2">
-                  {wikiContent.split('\n')
-                    .filter(line => line.startsWith('## '))
+                  {wikiContent
+                    .split('\n')
+                    .filter((line) => line.startsWith('## '))
                     .map((line, idx) => (
-                      <div key={idx} className="text-sm text-gray-400 hover:text-emerald-400 cursor-pointer transition-colors flex items-center gap-2">
+                      <div
+                        key={idx}
+                        className="text-sm text-gray-400 hover:text-emerald-400 cursor-pointer transition-colors flex items-center gap-2"
+                      >
                         <div className="w-1 h-1 rounded-full bg-gray-700" />
                         {line.slice(3)}
                       </div>
@@ -308,7 +329,8 @@ export function LivingWiki() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Knowledge Base Empty</h3>
             <p className="text-sm max-w-md text-center text-gray-400 mb-8 leading-relaxed">
-              Generate a living wiki to document your codebase automatically. It will analyze your entire project structure, patterns, and relationships.
+              Generate a living wiki to document your codebase automatically. It will analyze your entire project
+              structure, patterns, and relationships.
             </p>
             <Button
               onClick={handleGenerateWiki}

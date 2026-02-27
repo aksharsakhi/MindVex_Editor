@@ -1,8 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { providersStore } from '~/lib/stores/settings';
+import { providersStore, updateProviderSettings } from '~/lib/stores/settings';
 import { useStore } from '@nanostores/react';
+import { Dropdown, DropdownItem } from '~/components/ui/Dropdown';
+import { Button } from '~/components/ui/Button';
+import { ChevronDown, Bot, Sparkles } from 'lucide-react';
+import { Badge } from '~/components/ui/Badge';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -23,6 +27,40 @@ export function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const providers = useStore(providersStore);
 
+  const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
+
+  const enabledProviders = useMemo(() => {
+    return Object.values(providers).filter((p) => p.settings.enabled);
+  }, [providers]);
+
+  // Set default provider if none selected
+  useEffect(() => {
+    if (!selectedProviderName && enabledProviders.length > 0) {
+      setSelectedProviderName(enabledProviders[0].name);
+    } else if (selectedProviderName && !enabledProviders.find((p) => p.name === selectedProviderName)) {
+      // If selected provider is disabled, switch to another
+      if (enabledProviders.length > 0) {
+        setSelectedProviderName(enabledProviders[0].name);
+      } else {
+        setSelectedProviderName(null);
+      }
+    }
+  }, [enabledProviders, selectedProviderName]);
+
+  const activeProvider = useMemo(() => {
+    return enabledProviders.find((p) => p.name === selectedProviderName) || enabledProviders[0] || null;
+  }, [enabledProviders, selectedProviderName]);
+
+  const activeModel = useMemo(() => {
+    if (!activeProvider) {
+      return null;
+    }
+
+    return (
+      activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name)
+    );
+  }, [activeProvider]);
+
   useEffect(() => {
     const recent = repositoryHistoryStore.getRecentRepositories(1);
 
@@ -36,7 +74,7 @@ export function ChatPanel() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || !repoUrl) {
+    if (!input?.trim() || !repoUrl) {
       return;
     }
 
@@ -46,7 +84,7 @@ export function ChatPanel() {
     setLoading(true);
 
     try {
-      const query = input.toLowerCase();
+      const query = input?.toLowerCase() || '';
 
       if (query.includes('wiki') || query.startsWith('generate wiki')) {
         // Wiki generation via dedicated endpoint
@@ -64,15 +102,14 @@ export function ChatPanel() {
           content: m.content,
         }));
 
-        const enabledProviders = Object.values(providers).filter(p => p.settings.enabled);
-        const activeProvider = enabledProviders[0] || null;
-
-        const providerInfo = activeProvider ? {
-          name: activeProvider.name,
-          model: activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
-          apiKey: activeProvider.settings.apiKey,
-          baseUrl: activeProvider.settings.baseUrl,
-        } : undefined;
+        const providerInfo = activeProvider
+          ? {
+              name: activeProvider.name,
+              model: activeModel || undefined,
+              apiKey: activeProvider.settings.apiKey,
+              baseUrl: activeProvider.settings.baseUrl,
+            }
+          : undefined;
 
         const response = await mcpChat(repoUrl, input, history, providerInfo);
         setMessages((prev) => [...prev, { role: 'assistant', content: response.reply, model: response.model }]);
@@ -96,10 +133,62 @@ export function ChatPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-mindvex-elements-borderColor bg-mindvex-elements-background-depth-2 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm">✨</span>
-          <span className="text-xs font-semibold text-mindvex-elements-textPrimary tracking-wide uppercase">
+          <Sparkles className="w-4 h-4 text-mindvex-elements-textSecondary" />
+          <span className="text-xs font-semibold text-mindvex-elements-textPrimary tracking-wide uppercase mr-2">
             MindVex AI
           </span>
+
+          {/* Provider Selector */}
+          <Dropdown
+            trigger={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs gap-1 border border-mindvex-elements-borderColor bg-mindvex-elements-background-depth-1"
+              >
+                {activeProvider ? activeProvider.name : 'No Provider'}
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </Button>
+            }
+          >
+            {enabledProviders.map((p) => (
+              <DropdownItem key={p.name} onSelect={() => setSelectedProviderName(p.name)}>
+                {p.name}
+              </DropdownItem>
+            ))}
+            {enabledProviders.length === 0 && (
+              <div className="px-2 py-1 text-xs text-mindvex-elements-textSecondary">No enabled providers</div>
+            )}
+          </Dropdown>
+
+          {/* Model Selector */}
+          {activeProvider && activeProvider.staticModels.length > 0 && (
+            <Dropdown
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs gap-1 border border-mindvex-elements-borderColor bg-mindvex-elements-background-depth-1 max-w-[120px] justify-between"
+                >
+                  <span className="truncate">{activeModel || 'Model'}</span>
+                  <ChevronDown className="w-3 h-3 opacity-50 flex-shrink-0" />
+                </Button>
+              }
+            >
+              {activeProvider.staticModels.map((m) => (
+                <DropdownItem
+                  key={m.name}
+                  onSelect={() => updateProviderSettings(activeProvider.name, { selectedModel: m.name })}
+                  className={activeModel === m.name ? 'bg-mindvex-elements-selection-background' : ''}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span>{m.label}</span>
+                    <span className="text-[9px] text-mindvex-elements-textTertiary">{m.name}</span>
+                  </div>
+                </DropdownItem>
+              ))}
+            </Dropdown>
+          )}
         </div>
         <span className="text-[9px] text-mindvex-elements-textTertiary bg-mindvex-elements-background-depth-3 px-1.5 py-0.5 rounded-full">
           Gemini 2.0
@@ -135,10 +224,11 @@ export function ChatPanel() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
+              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                msg.role === 'user'
                   ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
                   : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
-                }`}
+              }`}
             >
               <div className="whitespace-pre-wrap break-words">{msg.content}</div>
               {msg.model && msg.role === 'assistant' && (

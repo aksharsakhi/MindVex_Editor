@@ -706,4 +706,4 @@ export function Menu() {
       <ControlPanel open={isSettingsOpen} onClose={handleSettingsClose} />
     </>
   );
-};
+}
