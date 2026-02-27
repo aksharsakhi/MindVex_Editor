@@ -9,13 +9,13 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache } from '~/lib/stores/graphCacheStore';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
   type ProjectAnalysis,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -44,19 +44,84 @@ export function CycleDetectionPage({ onBack }: Props) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cycleInsights, setCycleInsights] = useState<Record<string, string>>({});
 
+  const [detectedCycles, setDetectedCycles] = useState<string[]>([]);
+
+  // Calculate cycles on client side if not provided by backend
+  useEffect(() => {
+    if (graphData && (!graphData.cycles || graphData.cycles.length === 0)) {
+      // Simple DFS based cycle detection
+      const adj = new Map<string, string[]>();
+      graphData.edges.forEach((e) => {
+        const src = typeof e.data.source === 'string' ? e.data.source : (e.data.source as any).id;
+        const tgt = typeof e.data.target === 'string' ? e.data.target : (e.data.target as any).id;
+
+        if (!adj.has(src)) {
+          adj.set(src, []);
+        }
+
+        adj.get(src)?.push(tgt);
+      });
+
+      const visited = new Set<string>();
+      const recStack = new Set<string>();
+      const cycles: string[] = [];
+      const path: string[] = [];
+
+      const dfs = (u: string) => {
+        visited.add(u);
+        recStack.add(u);
+        path.push(u);
+
+        const neighbors = adj.get(u) || [];
+
+        for (const v of neighbors) {
+          if (!visited.has(v)) {
+            dfs(v);
+          } else if (recStack.has(v)) {
+            // Cycle found
+            const cycleStart = path.indexOf(v);
+
+            if (cycleStart !== -1) {
+              cycles.push(path.slice(cycleStart).join(' -> ') + ' -> ' + v);
+            }
+          }
+        }
+
+        recStack.delete(u);
+        path.pop();
+      };
+
+      graphData.nodes.forEach((n) => {
+        const id = n.data.id;
+
+        if (!visited.has(id)) {
+          dfs(id);
+        }
+      });
+
+      // Deduplicate cycles (simple string set)
+      const uniqueCycles = Array.from(new Set(cycles));
+
+      // Limit to top 20 to avoid freezing UI on massive graphs
+      setDetectedCycles(uniqueCycles.slice(0, 20));
+    } else if (graphData?.cycles) {
+      setDetectedCycles(graphData.cycles);
+    }
+  }, [graphData]);
+
   // Group cycles for easier display in the side panel
   const cycleList = useMemo(() => {
-    if (!graphData || !graphData.cycles || graphData.cycles.length === 0) {
+    if (!detectedCycles || detectedCycles.length === 0) {
       return [];
     }
 
-    return graphData.cycles.map((cycleStr, idx) => ({
+    return detectedCycles.map((cycleStr, idx) => ({
       id: `cycle-${idx}`,
       paths: cycleStr.split(' -> '),
       raw: cycleStr,
-      llmInsight: cycleInsights[`cycle-${idx}`]
+      llmInsight: cycleInsights[`cycle-${idx}`],
     }));
-  }, [graphData, cycleInsights]);
+  }, [detectedCycles, cycleInsights]);
 
   useEffect(() => {
     if (containerRef.current && graphData) {
@@ -166,14 +231,19 @@ export function CycleDetectionPage({ onBack }: Props) {
 
   // Handle selected cycle change
   useEffect(() => {
-    if (!cyRef.current || !graphData) return;
+    if (!cyRef.current || !graphData) {
+      return;
+    }
 
     const cy = cyRef.current;
     cy.elements().removeClass('selected-cycle');
 
     if (selectedCycleId) {
       const cycleInfo = cycleList.find((c) => c.id === selectedCycleId);
-      if (!cycleInfo) return;
+
+      if (!cycleInfo) {
+        return;
+      }
 
       const { paths } = cycleInfo;
 
@@ -189,7 +259,9 @@ export function CycleDetectionPage({ onBack }: Props) {
         const targetNode = cy.nodes().filter((n) => n.data('filePath') === targetPath);
 
         if (sourceNode.length > 0 && targetNode.length > 0) {
-          const edge = cy.edges().filter((e) => e.source().id() === sourceNode.id() && e.target().id() === targetNode.id());
+          const edge = cy
+            .edges()
+            .filter((e) => e.source().id() === sourceNode.id() && e.target().id() === targetNode.id());
           edge.addClass('selected-cycle');
         }
       }
@@ -198,23 +270,25 @@ export function CycleDetectionPage({ onBack }: Props) {
       const lastNode = cy.nodes().filter((n) => n.data('filePath') === paths[paths.length - 1]);
 
       if (firstNode.length > 0 && lastNode.length > 0) {
-        const closingEdge = cy.edges().filter((e) => e.source().id() === lastNode.id() && e.target().id() === firstNode.id());
+        const closingEdge = cy
+          .edges()
+          .filter((e) => e.source().id() === lastNode.id() && e.target().id() === firstNode.id());
         closingEdge.addClass('selected-cycle');
       }
     }
   }, [selectedCycleId, cycleList, graphData]);
 
-  const analyzeCycleWithAI = async (cycle: typeof cycleList[0]) => {
+  const analyzeCycleWithAI = async (cycle: (typeof cycleList)[0]) => {
     setIsAnalyzing(true);
-    
+
     try {
       const unifiedParser = await getUnifiedParser();
-      
+
       const prompt = `Analyze this dependency cycle and suggest how to break it:
 Cycle: ${cycle.raw}
 
 Components involved:
-${cycle.paths.map(p => `- ${p}`).join('\n')}
+${cycle.paths.map((p) => `- ${p}`).join('\n')}
 
 Please provide:
 1. Why this cycle is problematic
@@ -224,14 +298,15 @@ Please provide:
       // Simulate a code analysis to get LLM access
       const dummyCode = `// Dependency cycle analysis\n// Cycle: ${cycle.raw}`;
       const analysis = await unifiedParser.parseCode(dummyCode, cycle.paths[0]);
-      
+
       if (analysis.llmAnalysis) {
-        setCycleInsights(prev => ({
+        setCycleInsights((prev) => ({
           ...prev,
-          [cycle.id]: analysis.llmAnalysis?.recommendations[0] || 'Refactor by extracting shared logic to a common component.'
+          [cycle.id]:
+            analysis.llmAnalysis?.recommendations[0] || 'Refactor by extracting shared logic to a common component.',
         }));
       }
-      
+
       toast.success('AI cycle analysis completed');
     } catch (error) {
       console.error('AI cycle analysis failed:', error);
@@ -246,9 +321,7 @@ Please provide:
       <div className="flex flex-col items-center justify-center h-full text-center p-12">
         <div className="text-6xl mb-6">❌</div>
         <h2 className="text-2xl font-bold text-white mb-3">Loading Cycle Detector...</h2>
-        <p className="text-gray-400 max-w-md">
-          Searching for circular dependencies in the codebase architecture.
-        </p>
+        <p className="text-gray-400 max-w-md">Searching for circular dependencies in the codebase architecture.</p>
       </div>
     );
   }
@@ -279,7 +352,7 @@ Please provide:
           </h2>
           <ParseModeStatus />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <ParseModeSelector compact />
         </div>
@@ -331,9 +404,9 @@ Please provide:
                 {parseMode.type === 'llm-enhanced' && (
                   <div className="mt-2 pt-2 border-t border-gray-700">
                     {!cycle.llmInsight ? (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="w-full text-xs h-7 gap-1"
                         onClick={(e) => {
                           e.stopPropagation();

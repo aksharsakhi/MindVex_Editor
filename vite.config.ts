@@ -17,6 +17,16 @@ export default defineConfig((config) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+          rewrite: (path) => path,
+          secure: false,
+        },
+      },
+    },
     build: {
       target: 'esnext',
       minify: 'esbuild',

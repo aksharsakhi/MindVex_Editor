@@ -9,13 +9,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache, refreshGraph, graphCacheRepoUrl, graphCacheLoading } from '~/lib/stores/graphCacheStore';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import { workbenchStore } from '~/lib/stores/workbench';
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
   type ProjectAnalysis,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -43,6 +44,9 @@ export function RealTimeGraphPage({ onBack }: Props) {
   const repoUrl = useStore(graphCacheRepoUrl);
   const isLoading = useStore(graphCacheLoading);
   const parseMode = useStore(parseModeStore);
+  const files = useStore(workbenchStore.files);
+
+  const [localGraphData, setLocalGraphData] = useState<typeof graphData>(null);
 
   const [stats, setStats] = useState<UpdateStats>({
     lastUpdated: new Date(),
@@ -50,26 +54,114 @@ export function RealTimeGraphPage({ onBack }: Props) {
     filesAnalyzed: 0,
     averageTime: 0,
   });
-  
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Update stats when graph data changes
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [processedFiles] = useState<Set<string>>(new Set());
+
+  // Initialize local graph data
   useEffect(() => {
-    if (graphData) {
-      setStats(prev => ({
-        ...prev,
-        lastUpdated: new Date(),
-        changesDetected: prev.changesDetected + Math.floor(Math.random() * 3), // Simulate change detection
-        filesAnalyzed: graphData.nodes.length,
-      }));
+    if (graphData && !localGraphData) {
+      setLocalGraphData(JSON.parse(JSON.stringify(graphData)));
     }
   }, [graphData]);
 
+  // Handle Real-Time Updates
   useEffect(() => {
-    if (containerRef.current && graphData) {
+    const handleFileChange = async () => {
+      // Detect modified files since last check
+      const modifiedFiles = Array.from(workbenchStore.modifiedFiles);
+
+      if (modifiedFiles.length === 0) {
+        return;
+      }
+
+      const parser = await getUnifiedParser();
+      let changes = 0;
+      const startTime = Date.now();
+
+      for (const filePath of modifiedFiles) {
+        const dirent = files[filePath];
+
+        // Check if processed already for this version (naive check)
+        const fileKey = filePath + (dirent?.type === 'file' ? dirent.content.length : '0');
+
+        if (processedFiles.has(fileKey)) {
+          continue;
+        }
+
+        processedFiles.add(fileKey);
+        changes++;
+
+        if (dirent?.type === 'file') {
+          try {
+            // Parse the changed file
+            const result = await parser.parseCode(dirent.content, filePath);
+
+            // Update graph edges based on new imports
+            if (localGraphData) {
+              const newEdges = [...localGraphData.edges];
+              const newNodes = [...localGraphData.nodes];
+
+              // Remove old edges from this source
+              const filteredEdges = newEdges.filter((e) => e.data.source !== filePath);
+
+              // Add new edges
+              result.metadata.imports.forEach((imp) => {
+                // Find target node (naive matching by filename)
+                const targetNode = newNodes.find((n) => n.data.filePath?.includes(imp.module));
+
+                if (targetNode) {
+                  filteredEdges.push({
+                    data: {
+                      id: `${filePath}-${targetNode.data.id}`,
+                      source: filePath,
+                      target: targetNode.data.id,
+                      type: 'import',
+                      cycle: false,
+                      label: 'imports', // Custom prop
+                      strength: 1, // Custom prop
+                    } as any,
+                  });
+                }
+              });
+
+              setLocalGraphData({
+                ...localGraphData,
+                edges: filteredEdges,
+              });
+            }
+          } catch (e) {
+            console.error('Failed to parse changed file', e);
+          }
+        }
+      }
+
+      if (changes > 0) {
+        setStats((prev) => ({
+          ...prev,
+          lastUpdated: new Date(),
+          changesDetected: prev.changesDetected + changes,
+          filesAnalyzed: prev.filesAnalyzed + changes,
+          averageTime: (Date.now() - startTime) / changes,
+        }));
+
+        if (parseMode.type === 'llm-enhanced') {
+          // Trigger AI analysis for impact
+          toast.info(`AI analyzing impact of ${changes} changed files...`);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(handleFileChange, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [files, parseMode]); // Debounce on files change
+
+  useEffect(() => {
+    if (containerRef.current && localGraphData) {
       const elements = [
-        ...graphData.nodes.map((n) => ({ data: n.data })),
-        ...graphData.edges.map((e) => ({ data: e.data })),
+        ...localGraphData.nodes.map((n) => ({ data: n.data })),
+        ...localGraphData.edges.map((e) => ({ data: e.data })),
       ];
 
       cyRef.current = cytoscape({
@@ -129,31 +221,32 @@ export function RealTimeGraphPage({ onBack }: Props) {
   const handleRefresh = async () => {
     if (repoUrl && !isLoading) {
       setIsAnalyzing(true);
-      
+
       try {
         const unifiedParser = await getUnifiedParser();
-        
+
         // Force sync with backend
         const currentUrl = repoUrl;
         graphCacheRepoUrl.set(null);
         await refreshGraph(currentUrl);
-        
+
         // If LLM mode is enabled, perform additional analysis
         if (parseMode.type === 'llm-enhanced' && graphData) {
-          const files = graphData.nodes.slice(0, 5).map(node => ({
+          const files = graphData.nodes.slice(0, 5).map((node) => ({
             path: node.data.filePath || 'unknown',
             content: `// Simulated content for ${node.data.label}\n// Monitoring for changes...`,
           }));
-          
+
           const analysis = await unifiedParser.parseProject(files);
-          
-          setStats(prev => ({
+
+          setStats((prev) => ({
             ...prev,
             llmInsights: analysis.llmAnalysis?.recommendations || [],
-            averageTime: analysis.files.reduce((sum: number, f: any) => sum + (f.analysisTime || 0), 0) / analysis.files.length,
+            averageTime:
+              analysis.files.reduce((sum: number, f: any) => sum + (f.analysisTime || 0), 0) / analysis.files.length,
           }));
         }
-        
+
         toast.success('Real-time sync completed');
       } catch (error) {
         console.error('Sync failed:', error);
@@ -169,9 +262,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
       <div className="flex flex-col items-center justify-center h-full text-center p-12">
         <div className="text-6xl mb-6">🔄</div>
         <h2 className="text-2xl font-bold text-white mb-3">Loading Real-Time Monitor...</h2>
-        <p className="text-gray-400 max-w-md">
-          Establishing connection to codebase monitoring service.
-        </p>
+        <p className="text-gray-400 max-w-md">Establishing connection to codebase monitoring service.</p>
       </div>
     );
   }
@@ -202,15 +293,10 @@ export function RealTimeGraphPage({ onBack }: Props) {
           </h2>
           <ParseModeStatus />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <ParseModeSelector compact />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={isLoading || isAnalyzing}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading || isAnalyzing}>
             {isLoading || isAnalyzing ? (
               <>
                 <RefreshCw className="h-3 w-3 animate-spin mr-1" />
@@ -266,7 +352,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
             </div>
           </div>
         </div>
-        
+
         {stats.llmInsights && stats.llmInsights.length > 0 && (
           <div className="mt-4 pt-4 border-t">
             <h4 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">

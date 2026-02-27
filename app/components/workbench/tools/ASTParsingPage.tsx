@@ -9,13 +9,13 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache } from '~/lib/stores/graphCacheStore';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
   type ProjectAnalysis,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -123,7 +123,7 @@ export function ASTParsingPage({ onBack }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphData = useStore(graphCache);
   const parseMode = useStore(parseModeStore);
-  
+
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showLLMDetails, setShowLLMDetails] = useState(false);
@@ -163,9 +163,9 @@ export function ASTParsingPage({ onBack }: Props) {
               'text-valign': 'center',
               'text-halign': 'right',
               'font-size': '12px',
-              'width': 35,
-              'height': 35,
-              'shape': 'ellipse',
+              width: 35,
+              height: 35,
+              shape: 'ellipse',
             },
           },
           {
@@ -210,17 +210,17 @@ export function ASTParsingPage({ onBack }: Props) {
     }
 
     setIsAnalyzing(true);
-    
+
     try {
       // Get the unified parser
       const unifiedParser = await getUnifiedParser();
-      
+
       // Simulate file analysis based on graph data
-      const files = graphData.nodes.map(node => {
+      const files = graphData.nodes.map((node) => {
         const language = node.data.language || 'javascript';
         const fileName = node.data.label || 'unknown';
         const filePath = node.data.filePath || `${fileName}.${language}`;
-        
+
         return {
           path: filePath,
           content: `// Simulated content for ${fileName}
@@ -250,7 +250,7 @@ class ${fileName} {
 
       // Perform unified analysis
       const projectAnalysis = await unifiedParser.parseProject(files);
-      
+
       const languages = projectAnalysis.files.map((file: any) => ({
         name: file.language,
         count: 1,
@@ -260,9 +260,10 @@ class ${fileName} {
       }));
 
       // Group by language
-      const languageMap = new Map<string, typeof languages[0]>();
+      const languageMap = new Map<string, (typeof languages)[0]>();
       languages.forEach((lang: any) => {
         const existing = languageMap.get(lang.name);
+
         if (existing) {
           existing.count += lang.count;
           existing.complexity += lang.complexity;
@@ -306,7 +307,7 @@ class ${fileName} {
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
       type: 'application/json',
     });
-    
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -315,7 +316,7 @@ class ${fileName} {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     toast.success('AST analysis exported successfully');
   };
 
@@ -324,9 +325,7 @@ class ${fileName} {
       <div className="flex flex-col items-center justify-center h-full text-center p-12">
         <div className="text-6xl mb-6">🔍</div>
         <h2 className="text-2xl font-bold text-white mb-3">Loading AST Data...</h2>
-        <p className="text-gray-400 max-w-md">
-          Parsing abstract syntax trees for multi-language code analysis.
-        </p>
+        <p className="text-gray-400 max-w-md">Parsing abstract syntax trees for multi-language code analysis.</p>
       </div>
     );
   }
@@ -341,7 +340,8 @@ class ${fileName} {
           will display language breakdowns and color-coded file relationships.
         </p>
         <div className="text-xs text-gray-500 bg-gray-800 border border-gray-700 rounded-lg p-4 max-w-md">
-          <strong>Supported Languages:</strong> TypeScript, JavaScript, Python, Java, Go, Rust, C/C++, HTML, CSS, JSON, YAML, Markdown
+          <strong>Supported Languages:</strong> TypeScript, JavaScript, Python, Java, Go, Rust, C/C++, HTML, CSS, JSON,
+          YAML, Markdown
         </div>
       </div>
     );
@@ -360,15 +360,10 @@ class ${fileName} {
           </h2>
           <ParseModeStatus />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <ParseModeSelector compact />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={performEnhancedAnalysis}
-            disabled={isAnalyzing}
-          >
+          <Button variant="outline" size="sm" onClick={performEnhancedAnalysis} disabled={isAnalyzing}>
             {isAnalyzing ? (
               <>
                 <RefreshCw className="h-3 w-3 animate-spin mr-1" />
@@ -381,12 +376,7 @@ class ${fileName} {
               </>
             )}
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={exportAnalysis}
-            disabled={!analysisResult}
-          >
+          <Button variant="outline" size="sm" onClick={exportAnalysis} disabled={!analysisResult}>
             <Download className="h-3 w-3 mr-1" />
             Export
           </Button>
@@ -404,7 +394,7 @@ class ${fileName} {
             <div>
               <div className="text-sm text-gray-400">Languages</div>
               <div className="text-sm">
-                {analysisResult.languages.slice(0, 3).map(lang => (
+                {analysisResult.languages.slice(0, 3).map((lang) => (
                   <Badge key={lang.name} variant="outline" className="mr-1 mb-1">
                     {lang.name}: {lang.count}
                   </Badge>
@@ -420,7 +410,7 @@ class ${fileName} {
               <div className="text-xl font-bold">{analysisResult.analysisTime}ms</div>
             </div>
           </div>
-          
+
           {analysisResult.llmAnalysis && (
             <div className="mt-4 pt-4 border-t">
               <div className="flex items-center justify-between mb-2">
@@ -428,15 +418,11 @@ class ${fileName} {
                   <Brain className="h-4 w-4" />
                   AI Analysis
                 </h4>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setShowLLMDetails(!showLLMDetails)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowLLMDetails(!showLLMDetails)}>
                   {showLLMDetails ? 'Hide' : 'Show'} Details
                 </Button>
               </div>
-              
+
               {showLLMDetails && (
                 <div className="space-y-3 text-sm">
                   <div>
@@ -511,7 +497,7 @@ class ${fileName} {
               </div>
             ))}
           </div>
-          
+
           {analysisResult && (
             <div className="mt-6">
               <h4 className="font-bold text-gray-200 mb-2">Analysis Summary</h4>
@@ -526,9 +512,7 @@ class ${fileName} {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Mode:</span>
-                  <span className="text-gray-200">
-                    {parseMode.type === 'parser-only' ? 'Parser' : 'LLM'}
-                  </span>
+                  <span className="text-gray-200">{parseMode.type === 'parser-only' ? 'Parser' : 'LLM'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Analysis Time:</span>

@@ -9,13 +9,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache } from '~/lib/stores/graphCacheStore';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
   type ProjectAnalysis,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -134,36 +134,38 @@ export function ImpactAnalysisPage({ onBack }: Props) {
         const node = evt.target;
         const cy = cyRef.current;
 
-        if (!cy) return;
+        if (!cy) {
+          return;
+        }
 
         // Reset all
         cy.elements().removeClass('selected impacted impact-path');
 
         // Highlight clicked node
         node.addClass('selected');
-        
+
         // Find successors (files that depend on this one)
         const successors = node.successors();
         successors.nodes().addClass('impacted');
         successors.edges().addClass('impact-path');
 
-        const selected: ImpactNode = { 
-          id: node.id(), 
+        const selected: ImpactNode = {
+          id: node.id(),
           label: node.data('label'),
-          type: node.data('type') 
+          type: node.data('type'),
         };
-        
+
         const impacted = successors.nodes().map((n: cytoscape.NodeSingular) => ({
           id: n.id(),
           label: n.data('label'),
           type: n.data('type'),
-          risk: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low' as const
+          risk: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : ('low' as const),
         }));
 
         setAnalysisResult({
           selectedNode: selected,
           impactedNodes: impacted,
-          riskScore: (impacted.length / Math.max(1, cy.nodes().length)) * 100
+          riskScore: (impacted.length / Math.max(1, cy.nodes().length)) * 100,
         });
 
         // Perform AI analysis if in LLM mode
@@ -183,12 +185,12 @@ export function ImpactAnalysisPage({ onBack }: Props) {
 
   const performAIImpactAnalysis = async (selected: ImpactNode, impacted: ImpactNode[]) => {
     setIsAnalyzing(true);
-    
+
     try {
       const unifiedParser = await getUnifiedParser();
-      
+
       const fileContent = `// Impact Analysis for ${selected.label}
-// Dependents: ${impacted.map(n => n.label).join(', ')}
+// Dependents: ${impacted.map((n) => n.label).join(', ')}
 
 /**
  * This file is being analyzed for change impact.
@@ -199,12 +201,16 @@ class ${selected.label.split('.')[0]} {
 }`;
 
       const analysis = await unifiedParser.parseCode(fileContent, selected.label);
-      
-      setAnalysisResult(prev => prev ? ({
-        ...prev,
-        llmAnalysis: analysis.llmAnalysis
-      }) : null);
-      
+
+      setAnalysisResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              llmAnalysis: analysis.llmAnalysis,
+            }
+          : null,
+      );
+
       toast.success('AI impact analysis completed');
     } catch (error) {
       console.error('AI impact analysis failed:', error);
@@ -219,9 +225,7 @@ class ${selected.label.split('.')[0]} {
       <div className="flex flex-col items-center justify-center h-full text-center p-12">
         <div className="text-6xl mb-6">🔬</div>
         <h2 className="text-2xl font-bold text-white mb-3">Loading Impact Analyzer...</h2>
-        <p className="text-gray-400 max-w-md">
-          Analyzing dependency graph for change impact tracing.
-        </p>
+        <p className="text-gray-400 max-w-md">Analyzing dependency graph for change impact tracing.</p>
       </div>
     );
   }
@@ -252,7 +256,7 @@ class ${selected.label.split('.')[0]} {
           </h2>
           <ParseModeStatus />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <ParseModeSelector compact />
         </div>
@@ -272,9 +276,7 @@ class ${selected.label.split('.')[0]} {
               <div>
                 <h3 className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Selected Component</h3>
                 <Card className="p-3 bg-pink-500/10 border-pink-500/30">
-                  <div className="font-mono text-sm text-pink-300 break-all">
-                    {analysisResult.selectedNode.label}
-                  </div>
+                  <div className="font-mono text-sm text-pink-300 break-all">{analysisResult.selectedNode.label}</div>
                   <div className="mt-2 flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
                       {analysisResult.selectedNode.type || 'module'}
@@ -303,7 +305,9 @@ class ${selected.label.split('.')[0]} {
                 </h3>
 
                 {analysisResult.impactedNodes.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic">No files depend on this component directly or indirectly.</p>
+                  <p className="text-sm text-gray-400 italic">
+                    No files depend on this component directly or indirectly.
+                  </p>
                 ) : (
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {analysisResult.impactedNodes.map((node) => (
@@ -312,9 +316,7 @@ class ${selected.label.split('.')[0]} {
                         className="bg-gray-700/50 p-2 rounded text-sm text-gray-300 font-mono break-all border border-gray-700/50 hover:bg-gray-700 transition-colors flex justify-between items-center"
                       >
                         <span className="truncate">{node.label}</span>
-                        {node.risk === 'high' && (
-                          <AlertTriangle className="h-3 w-3 text-red-400 flex-shrink-0 ml-2" />
-                        )}
+                        {node.risk === 'high' && <AlertTriangle className="h-3 w-3 text-red-400 flex-shrink-0 ml-2" />}
                       </div>
                     ))}
                   </div>
@@ -323,7 +325,9 @@ class ${selected.label.split('.')[0]} {
 
               {analysisResult.llmAnalysis && analysisResult.llmAnalysis.recommendations.length > 0 && (
                 <div>
-                  <h3 className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Change Recommendations</h3>
+                  <h3 className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">
+                    Change Recommendations
+                  </h3>
                   <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
                     {analysisResult.llmAnalysis.recommendations.map((rec, idx) => (
                       <li key={idx}>{rec}</li>

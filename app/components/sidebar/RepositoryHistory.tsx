@@ -38,8 +38,8 @@ export function RepositoryHistory({
   // Convert the repository history object to an array and filter based on search
   const allRepositories = Object.values(repositoryHistory).filter(
     (repo) =>
-      repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      repo.description.toLowerCase().includes(searchTerm.toLowerCase()),
+      (repo.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (repo.description || '').toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Sort repositories by timestamp (newest first)

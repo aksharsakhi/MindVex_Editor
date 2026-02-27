@@ -45,7 +45,9 @@ export function BranchSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('');
 
-  const filteredBranches = branches.filter((branch) => branch.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredBranches = branches.filter((branch) =>
+    (branch?.name || '').toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const fetchBranches = async () => {
     setIsLoading(true);

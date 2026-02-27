@@ -5,14 +5,7 @@ import { providersStore } from '~/lib/stores/settings';
 // Default configuration
 export const DEFAULT_CONFIG = {
   defaultMode: { type: 'parser-only' } as ParseMode,
-  availableModels: [
-    'gpt-4',
-    'gpt-3.5-turbo',
-    'claude-3-sonnet',
-    'claude-3-haiku',
-    'gemini-pro',
-    'deepseek-coder',
-  ],
+  availableModels: ['gpt-4', 'gpt-3.5-turbo', 'claude-3-sonnet', 'claude-3-haiku', 'gemini-pro', 'deepseek-coder'],
   defaultModel: 'gpt-3.5-turbo',
   defaultTemperature: 0.7,
   defaultMaxTokens: 2000,
@@ -24,17 +17,20 @@ export const parseModeStore = atom<ParseMode>(DEFAULT_CONFIG.defaultMode);
 // Sync with providersStore on every change
 providersStore.subscribe((providers) => {
   const current = parseModeStore.get();
+
   if (current.type === 'llm-enhanced') {
-    const enabledProvider = Object.values(providers).find(p => p.settings.enabled);
+    const enabledProvider = Object.values(providers).find((p) => p.settings.enabled);
+
     if (enabledProvider) {
-      const selectedModel = enabledProvider.settings.selectedModel || 
-                          (enabledProvider.staticModels && enabledProvider.staticModels[0]?.name) ||
-                          DEFAULT_CONFIG.defaultModel;
-      
+      const selectedModel =
+        enabledProvider.settings.selectedModel ||
+        (enabledProvider.staticModels && enabledProvider.staticModels[0]?.name) ||
+        DEFAULT_CONFIG.defaultModel;
+
       if (current.model !== selectedModel) {
         parseModeStore.set({
           ...current,
-          model: selectedModel
+          model: selectedModel,
         });
       }
     }
@@ -52,10 +48,10 @@ export function setParserOnlyMode(): void {
 
 export function setLLMEnhancedMode(model?: string, temperature?: number, maxTokens?: number): void {
   const providers = providersStore.get();
-  const enabledProvider = Object.values(providers).find(p => p.settings.enabled);
-  
-  const defaultModel = enabledProvider 
-    ? (enabledProvider.settings.selectedModel || (enabledProvider.staticModels && enabledProvider.staticModels[0]?.name))
+  const enabledProvider = Object.values(providers).find((p) => p.settings.enabled);
+
+  const defaultModel = enabledProvider
+    ? enabledProvider.settings.selectedModel || (enabledProvider.staticModels && enabledProvider.staticModels[0]?.name)
     : DEFAULT_CONFIG.defaultModel;
 
   parseModeStore.set({
@@ -68,6 +64,7 @@ export function setLLMEnhancedMode(model?: string, temperature?: number, maxToke
 
 export function toggleParseMode(): void {
   const current = parseModeStore.get();
+
   if (current.type === 'parser-only') {
     setLLMEnhancedMode();
   } else {
@@ -90,6 +87,7 @@ export function getCurrentModel(): string | undefined {
 
 export function updateModel(model: string): void {
   const current = parseModeStore.get();
+
   if (current.type === 'llm-enhanced') {
     parseModeStore.set({ ...current, model });
   }
@@ -97,6 +95,7 @@ export function updateModel(model: string): void {
 
 export function updateTemperature(temperature: number): void {
   const current = parseModeStore.get();
+
   if (current.type === 'llm-enhanced') {
     parseModeStore.set({ ...current, temperature });
   }
@@ -104,6 +103,7 @@ export function updateTemperature(temperature: number): void {
 
 export function updateMaxTokens(maxTokens: number): void {
   const current = parseModeStore.get();
+
   if (current.type === 'llm-enhanced') {
     parseModeStore.set({ ...current, maxTokens });
   }
@@ -143,6 +143,7 @@ export function saveConfiguration(): void {
 export function loadConfiguration(): void {
   try {
     const saved = localStorage.getItem('mindvex-parse-mode');
+
     if (saved) {
       const mode = JSON.parse(saved) as ParseMode;
       parseModeStore.set(mode);

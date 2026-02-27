@@ -7,15 +7,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
-import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
+import { mcpChat, mcpGetWiki, mcpDescribeModule, mcpSemanticSearch, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import { providersStore } from '~/lib/stores/settings';
-import { 
-  getUnifiedParser, 
-  parseModeStore, 
-  ParseModeSelector, 
+import {
+  getUnifiedParser,
+  parseModeStore,
+  ParseModeSelector,
   ParseModeStatus,
-  type LLMAnalysis 
+  type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
@@ -36,7 +36,7 @@ export function IntelligentChat() {
   const [loading, setLoading] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   const parseMode = useStore(parseModeStore);
 
   useEffect(() => {
@@ -68,9 +68,49 @@ export function IntelligentChat() {
       let enhancedAnalysis: LLMAnalysis | undefined;
 
       // ─── Provider & Model Selection ─────────────────────────────────────────────
-      
-      const enabledProviders = Object.values(providers).filter(p => p.settings.enabled);
+
+      const enabledProviders = Object.values(providers).filter((p) => p.settings.enabled);
       const activeProvider = enabledProviders[0] || null;
+
+      // Handle Parser-Only Mode (Keyword Search)
+      if (parseMode.type === 'parser-only') {
+        try {
+          /*
+           * Use semantic search endpoint but frame it as "Search Results"
+           * In a real "Without AI" mode, this should be a literal string search,
+           * but mcpSemanticSearch might be vector-based.
+           * For now, we assume "Parser Only" means "No LLM Generation".
+           * We will use a simple file search if available, or just fallback to mcpSemanticSearch (which might use embeddings but no generation).
+           * Actually, let's use a simulated grep for now since we don't have a grep API readily available in mcpClient
+           * other than mcpSemanticSearch.
+           */
+
+          /*
+           * Better: If we have mcpSemanticSearch, use it to get snippets.
+           * It uses embeddings (AI), but no Generation (LLM).
+           * This fits "Without AI" (Generative AI) but "With Search".
+           */
+
+          const results = await mcpSemanticSearch(repoUrl, input, 5);
+
+          let responseContent = `**Search Results for "${input}"**\n\n`;
+
+          if (results.results.length === 0) {
+            responseContent += 'No matches found.';
+          } else {
+            responseContent += results.results
+              .map((r) => `**${r.filePath}**\n\`\`\`\n${r.content.trim()}\n\`\`\``)
+              .join('\n\n');
+          }
+
+          setMessages((prev) => [...prev, { role: 'assistant', content: responseContent }]);
+        } catch (e) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: `Search failed: ${(e as Error).message}` }]);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
 
       // If LLM-enhanced mode is on, perform an initial code analysis
       if (parseMode.type === 'llm-enhanced') {
@@ -97,12 +137,16 @@ export function IntelligentChat() {
           content: m.content,
         }));
 
-        const providerInfo = activeProvider ? {
-          name: activeProvider.name,
-          model: activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
-          apiKey: activeProvider.settings.apiKey,
-          baseUrl: activeProvider.settings.baseUrl,
-        } : undefined;
+        const providerInfo = activeProvider
+          ? {
+              name: activeProvider.name,
+              model:
+                activeProvider.settings.selectedModel ||
+                (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
+              apiKey: activeProvider.settings.apiKey,
+              baseUrl: activeProvider.settings.baseUrl,
+            }
+          : undefined;
 
         const response = await mcpChat(repoUrl, input, history, providerInfo);
         setMessages((prev) => [
@@ -111,7 +155,7 @@ export function IntelligentChat() {
             role: 'assistant',
             content: response.reply,
             model: response.model,
-            enhancedAnalysis
+            enhancedAnalysis,
           },
         ]);
       }
@@ -192,19 +236,21 @@ export function IntelligentChat() {
                   </div>
                 )}
               </div>
-              
+
               {msg.enhancedAnalysis && (
                 <Card className="p-3 bg-blue-500/5 border-blue-500/10 text-[11px] w-full max-w-[400px]">
                   <div className="flex items-center gap-2 mb-2 text-blue-400 font-bold uppercase tracking-wider">
                     <Brain className="h-3 w-3" />
                     Contextual AI Insights
                   </div>
-                  <div className="text-gray-400 line-clamp-3 mb-2 italic">
-                    {msg.enhancedAnalysis.summary}
-                  </div>
+                  <div className="text-gray-400 line-clamp-3 mb-2 italic">{msg.enhancedAnalysis.summary}</div>
                   <div className="flex flex-wrap gap-1">
                     {msg.enhancedAnalysis.recommendations.slice(0, 2).map((rec, idx) => (
-                      <Badge key={idx} variant="outline" className="text-[9px] bg-blue-500/10 border-blue-500/20 text-blue-300">
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        className="text-[9px] bg-blue-500/10 border-blue-500/20 text-blue-300"
+                      >
                         {rec}
                       </Badge>
                     ))}
@@ -260,8 +306,13 @@ export function IntelligentChat() {
             </button>
           </div>
           <div className="mt-2 text-[10px] text-center text-gray-600 flex items-center justify-center gap-4">
-            <span className="flex items-center gap-1"><Info className="h-2.5 w-2.5" /> Use SHIFT+ENTER for multiline</span>
-            <span className="flex items-center gap-1"><Zap className="h-2.5 w-2.5" /> {parseMode.type === 'llm-enhanced' ? 'Enhanced Context Enabled' : 'Standard Chat Mode'}</span>
+            <span className="flex items-center gap-1">
+              <Info className="h-2.5 w-2.5" /> Use SHIFT+ENTER for multiline
+            </span>
+            <span className="flex items-center gap-1">
+              <Zap className="h-2.5 w-2.5" />{' '}
+              {parseMode.type === 'llm-enhanced' ? 'Enhanced Context Enabled' : 'Standard Chat Mode'}
+            </span>
           </div>
         </div>
       </div>

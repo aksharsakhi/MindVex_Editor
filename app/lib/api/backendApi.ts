@@ -4,7 +4,8 @@
  * https://mindvex-backend.onrender.com/api in prod).
  */
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'http://localhost:8080/api';
+const BACKEND_URL = '/api';
+console.log('[Debug] PROXY Backend URL:', BACKEND_URL); // Debug log to verify URL in browser console
 
 function getAuthHeaders(): Record<string, string> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;

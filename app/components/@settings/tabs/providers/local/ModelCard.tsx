@@ -19,7 +19,9 @@ function ModelCard({ model, onUpdate, onDelete, isSelected, onSelect }: ModelCar
     <Card
       className={classNames(
         'bg-mindvex-elements-background-depth-3 hover:bg-mindvex-elements-background-depth-4 transition-all duration-200 shadow-sm hover:shadow-md border',
-        isSelected ? 'border-purple-500 ring-1 ring-purple-500/20' : 'border-mindvex-elements-borderColor hover:border-purple-500/20',
+        isSelected
+          ? 'border-purple-500 ring-1 ring-purple-500/20'
+          : 'border-mindvex-elements-borderColor hover:border-purple-500/20',
       )}
     >
       <CardContent className="p-5">
