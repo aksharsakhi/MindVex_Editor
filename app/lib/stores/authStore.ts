@@ -42,8 +42,12 @@ export function initAuth() {
       localStorage.setItem('auth_token', urlToken);
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      // Force relative API path to use local proxy
-      const API_BASE_URL = '/api';
+      // Use the configured backend URL from environment, removing trailing '/api' if present
+      let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+      if (API_BASE_URL.endsWith('/api')) {
+        API_BASE_URL = API_BASE_URL.slice(0, -4);
+      }
+      API_BASE_URL = API_BASE_URL || '/api';
       fetch(`${API_BASE_URL}/users/me`, {
         headers: { Authorization: `Bearer ${urlToken}` },
       })
@@ -64,9 +68,13 @@ export function initAuth() {
     if (token) {
       /*
        * Always validate the stored token against the backend
-       * Force relative API path to use local proxy
+       * Use the configured backend URL from environment, removing trailing '/api' if present
        */
-      const API_BASE_URL = '/api';
+      let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+      if (API_BASE_URL.endsWith('/api')) {
+        API_BASE_URL = API_BASE_URL.slice(0, -4);
+      }
+      API_BASE_URL = API_BASE_URL || '/api';
       fetch(`${API_BASE_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })

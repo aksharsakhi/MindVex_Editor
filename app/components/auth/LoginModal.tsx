@@ -4,8 +4,12 @@ import { GitHubButton } from './GitHubButton';
 import { classNames } from '~/utils/classNames';
 import { setAuth } from '~/lib/stores/authStore';
 
-// Force relative API path to use local proxy
-const API_BASE_URL = '/api';
+// Use the configured backend URL from environment, removing trailing '/api' if present
+let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+if (API_BASE_URL.endsWith('/api')) {
+  API_BASE_URL = API_BASE_URL.slice(0, -4);
+}
+API_BASE_URL = API_BASE_URL || '/api';
 
 interface LoginModalProps {
   isOpen: boolean;
