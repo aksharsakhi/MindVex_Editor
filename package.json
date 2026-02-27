@@ -130,6 +130,8 @@
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.3.1",
+    "react-force-graph-2d": "^1.25.7",
+    "react-force-graph-3d": "^1.26.6",
     "react-force-graph-2d": "^1.29.1",
     "react-force-graph-3d": "^1.29.1",
     "react-hotkeys-hook": "^4.6.1",
